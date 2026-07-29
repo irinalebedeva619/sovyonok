@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Читательский клуб "Совёнок"</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- ===== ФОН С ЛЕТАЮЩИМИ ЭМОДЗИ ===== -->
+    <div class="bg-elements">
+        <span class="balloon balloon1">🎈</span>
+        <span class="balloon balloon2">🎈</span>
+        <span class="balloon balloon3">🎈</span>
+        <span class="balloon balloon4">🎈</span>
+        <span class="balloon balloon5">🎈</span>
+        <span class="balloon balloon6">🎈</span>
+        <span class="balloon balloon7">🎈</span>
+        <span class="balloon balloon8">🎈</span>
+        <span class="star star1">⭐</span>
+        <span class="star star2">🌟</span>
+        <span class="star star3">✨</span>
+        <span class="star star4">⭐</span>
+        <span class="star star5">🌟</span>
+        <span class="star star6">✨</span>
+        <span class="star star7">⭐</span>
+        <span class="star star8">🌟</span>
+        <span class="star star9">✨</span>
+        <span class="star star10">⭐</span>
+        <span class="rainbow">🌈</span>
+        <span class="cloud cloud1">☁️</span>
+        <span class="cloud cloud2">☁️</span>
+        <span class="cloud cloud3">☁️</span>
+        <span class="heart heart1">❤️</span>
+        <span class="heart heart2">🧡</span>
+        <span class="heart heart3">💛</span>
+        <span class="heart heart4">💚</span>
+        <span class="heart heart5">💙</span>
+        <span class="heart heart6">💜</span>
+        <span class="heart heart7">❤️</span>
+        <span class="heart heart8">💖</span>
+        <span class="flower flower1">🌸</span>
+        <span class="flower flower2">🌺</span>
+        <span class="flower flower3">🌻</span>
+        <span class="flower flower4">🌷</span>
+        <span class="flower flower5">🌹</span>
+        <span class="flower flower6">🌼</span>
+        <span class="flower flower7">🌸</span>
+        <span class="flower flower8">🌺</span>
+        <span class="butterfly butterfly1">🦋</span>
+        <span class="butterfly butterfly2">🦋</span>
+        <span class="butterfly butterfly3">🦋</span>
+        <span class="butterfly butterfly4">🦋</span>
+        <span class="butterfly butterfly5">🦋</span>
+        <span class="sun">☀️</span>
+        <span class="sparkle sparkle1">✨</span>
+        <span class="sparkle sparkle2">✨</span>
+        <span class="sparkle sparkle3">✨</span>
+        <span class="sparkle sparkle4">✨</span>
+        <span class="sparkle sparkle5">✨</span>
+        <span class="sparkle sparkle6">✨</span>
+        <span class="rainbow-small rainbow-small1">🌈</span>
+        <span class="rainbow-small rainbow-small2">🌈</span>
+        <span class="rainbow-small rainbow-small3">🌈</span>
+    </div>
+
+    <!-- ===== ШАПКА ===== -->
+    <header class="fixed-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <div class="logo-image">
+                    <img src="https://i.pinimg.com/1200x/ab/e6/46/abe6465a56223a592001423cd908f557.jpg" alt="Совёнок" id="logoImg" />
+                </div>
+                <div class="logo-text">
+                    <h1>Совёнок</h1>
+                    <span class="subtitle">читательский клуб для родителей и детей дошкольного возраста</span>
+                </div>
+            </div>
+            <nav class="main-nav">
+                <button class="nav-btn active" data-tab="home"><i class="fas fa-home"></i> Главная</button>
+                <button class="nav-btn" data-tab="feed"><i class="fas fa-list-ul"></i> Лента</button>
+                <button class="nav-btn" data-tab="bookmarks"><i class="fas fa-bookmark"></i> Закладки <span class="badge" id="bookmarkCount">0</span></button>
+                <button class="nav-btn" data-tab="chat"><i class="fas fa-comments"></i> Чат <span class="badge" id="chatCount">0</span></button>
+                <button class="nav-btn dev-btn" id="devLoginBtn"><i class="fas fa-user-cog"></i> Войти</button>
+            </nav>
+            <!-- СЧЁТЧИК ПОСЕЩАЕМОСТИ СПРАВА -->
+            <div class="visitor-counter">
+                <i class="fas fa-eye"></i>
+                <span id="visitorCount">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== ОСНОВНОЙ КОНТЕНТ ===== -->
+    <main class="main-content">
+
+        <!-- ===== СТРАНИЦА "ГЛАВНАЯ" ===== -->
+        <section id="homePage" class="page active">
+            <div class="banner-image-center">
+                <img src="https://www.allianz.ie/northern-ireland/_jcr_content/root/stage/stageimage.img.82.3360.jpeg/1720622546099/northern-irish-family.jpeg" alt="Счастливая читающая семья" class="banner-image" />
+            </div>
+
+            <div class="banner-slogan-block">
+                <div class="slogan-content">
+                    <div class="slogan-icon">📖</div>
+                    <div class="slogan-subtitle"> <h3>«Самая лучшая инвестиция в будущее ребенка — это книга, прочитанная вместе с ним»</h3></div>
+                    <div class="slogan-divider"></div>
+                </div>
+            </div>
+
+            <div class="welcome-block">
+                <h2>Здравствуйте, дорогие друзья!</h2>
+                <h4>Мы рады приветствовать вас в нашем интерактивном читательском клубе «Совёнок».<br>
+Мы выбрали это имя неслучайно — сова издавна считается символом мудрости, знаний и любви к книге. Именно эти качества мы хотим взрастить в наших детях.<br>
+Наверное, каждый из нас мечтает, чтобы его ребенок вырос любознательным, чутким, умеющим сопереживать, думать и выражать свои мысли. Есть одно удивительное, проверенное веками средство, которое помогает всему этому случиться, — это книга. И особенно — книга, прочитанная вместе с мамой или папой.<br>
+Клуб «Совенок» — это не просто еще одно мероприятие.<br>
+Это пространство для живого общения семьи, детского сада и библиотеки. Мы создали его для того, чтобы вместе:<br>
+• открывать удивительный мир детской литературы,<br>
+• возвращать и укреплять традицию семейного чтения,<br>
+• делать книгу настоящим другом для каждого ребенка и каждого родителя,<br>
+• получать радость от общего дела.<br>
+Впереди нас ждут интересные встречи. Мы будем:<br>
+📖 Знакомить вас с замечательными книгами — современными и проверенными временем, которые вы сможете читать вместе с детьми и обязательно обсуждать; <br>
+🗣️ Говорить о важном — о том, как книга влияет на развитие эмоционального интеллекта, речи, воображения и характера вашего ребенка;<br>
+🎭 Предлагать идеи для чтения — короткие тексты, стихи, рассказы, сказки, которые можно читать дома перед сном, в выходной день или просто «между делом»;<br>
+📚 Рассказывать о мероприятиях нашей библиотеки-партнера — о выставках, праздниках, конкурсах и мастер-классах, которые проходят в библиотеке для детей и родителей. Ведь мы очень хотим, чтобы семья и библиотека стали настоящими друзьями, а книга перешагнула порог детского сада и поселилась в каждом доме.<br>
+Наш клуб — это интерактивные встречи, где каждый может высказать свое мнение, поделиться своим семейным опытом чтения, задать вопрос, вместе с ребенком поучаствовать в творческом задании или конкурсе.<br>
+Мы верим, что чтение — это не просто полезная привычка. Это способ укрепления семьи, когда взрослые и дети оказываются рядом, слышат друг друга, переживают одну историю, смеются и грустят вместе. Это тот самый «золотой ключик», который открывает сердца и объединяет поколения.<br>
+Мы приглашаем вас стать активными участниками нашего читательского клуба «Совенок».<br>
+Будем читать, удивляться, размышлять и расти вместе!<br>
+Спасибо, что вы с нами! <br>
+Пусть книга станет для вас и ваших детей добрым спутником на долгие годы!<br>
+                </h4>
+            </div>
+        </section>
+
+        <!-- ===== СТРАНИЦА "ЛЕНТА" ===== -->
+        <section id="feedPage" class="page">
+            <div class="create-post admin-only" id="createPostArea" style="display:none;">
+                <div class="post-input-wrapper">
+                    <div class="admin-badge"><i class="fas fa-user-cog"></i> Режим разработчика 🦉</div>
+                    <textarea id="postInput" placeholder="Опубликовать новость для клуба..." rows="2"></textarea>
+                    <div class="image-preview" id="imagePreview" style="display:none;">
+                        <img id="previewImg" src="#" alt="Preview" />
+                        <button class="remove-image" id="removeImageBtn"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="post-input-actions">
+                        <div class="input-tools">
+                            <label for="imageUpload" class="btn btn-outline btn-sm"><i class="fas fa-image"></i> Прикрепить фото</label>
+                            <input type="file" id="imageUpload" accept="image/*" style="display:none;" />
+                        </div>
+                        <button class="btn btn-primary" id="publishBtn"><i class="fas fa-paper-plane"></i> Опубликовать</button>
+                    </div>
+                </div>
+            </div>
+            <div class="feed" id="feedContainer"></div>
+        </section>
+
+        <!-- ===== СТРАНИЦА "ЗАКЛАДКИ" ===== -->
+        <section id="bookmarksPage" class="page">
+            <div class="feed" id="bookmarksContainer"></div>
+        </section>
+
+        <!-- ===== СТРАНИЦА "ЧАТ" ===== -->
+        <section id="chatPage" class="page">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h3><i class="fas fa-comments"></i> Чат вопросов</h3>
+                    <p>Задайте вопрос о книгах, чтении или развитии детей</p>
+                    <div id="chatPostRef" style="display:none; margin-top:8px; padding:8px 14px; background:#fef5ea; border-radius:12px; font-size:0.85rem; color:#5a2d0c; border:2px dashed #f5a97f;">
+                        <i class="fas fa-link"></i> Обсуждаем пост: <span id="chatPostText"></span>
+                        <button id="clearChatRef" style="background:none; border:none; color:#ff6b6b; cursor:pointer; margin-left:8px;">✕</button>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chatNameInput" placeholder="Ваше имя (необязательно)" maxlength="30" />
+                        <input type="text" id="chatMessageInput" placeholder="Напишите ваш вопрос..." />
+                        <button id="chatSendBtn"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Модальное окно для входа разработчика -->
+    <div class="modal-overlay" id="devModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🦉 Вход для разработчика</h2>
+                <button class="modal-close" id="devModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Введите пароль для входа в режим разработчика:</p>
+                <input type="password" id="devPassword" placeholder="Введите пароль..." />
+                <div id="devError" style="color:red;font-size:0.85rem;margin-top:8px;display:none;">Неверный пароль!</div>
+                <button class="btn btn-primary" id="devLoginSubmit" style="margin-top:15px;width:100%;justify-content:center;">
+                    <i class="fas fa-unlock"></i> Войти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
