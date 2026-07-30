@@ -227,6 +227,11 @@
 
     // ========== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==========
     function switchPage(pageId) {
+        // Отменяем редактирование при переключении страницы
+        if (editingPost) {
+            cancelEdit();
+        }
+        
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const page = document.getElementById(pageId + 'Page');
         if (page) page.classList.add('active');
@@ -250,6 +255,11 @@
         const post = posts.find(p => p.id === postId);
         if (!post) return;
         
+        // Отменяем предыдущее редактирование
+        if (editingPost) {
+            cancelEdit();
+        }
+        
         editingPost = {
             postId: post.id,
             text: post.text,
@@ -268,29 +278,29 @@
             previewImg.src = '#';
         }
         
-        publishBtn.innerHTML = 'Сохранить изменения';
+        publishBtn.innerHTML = '💾 Сохранить изменения';
         publishBtn.style.background = 'linear-gradient(135deg, #f5b342, #e8926a)';
         
-        switchPage('feed');
+        // Переключаемся на страницу ленты, если мы не там
+        const feedPage = document.getElementById('feedPage');
+        if (!feedPage.classList.contains('active')) {
+            switchPage('feed');
+        }
+        
         document.getElementById('createPostArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
         postInput.focus();
-        
-        alert('Редактирование поста. Внесите изменения и нажмите "Сохранить изменения".');
     }
 
     // ========== ОТМЕНА РЕДАКТИРОВАНИЯ ==========
     function cancelEdit() {
         if (editingPost) {
-            if (confirm('Отменить редактирование?')) {
-                editingPost = null;
-                currentImageData = null;
-                imagePreview.style.display = 'none';
-                previewImg.src = '#';
-                postInput.value = '';
-                publishBtn.innerHTML = 'Опубликовать';
-                publishBtn.style.background = '';
-                renderAll();
-            }
+            editingPost = null;
+            currentImageData = null;
+            imagePreview.style.display = 'none';
+            previewImg.src = '#';
+            postInput.value = '';
+            publishBtn.innerHTML = 'Опубликовать';
+            publishBtn.style.background = '';
         }
     }
 
@@ -581,6 +591,7 @@
                 post.text = trimmed || '';
                 post.imageData = imageData || null;
                 
+                // Сбрасываем состояние редактирования
                 editingPost = null;
                 currentImageData = null;
                 imagePreview.style.display = 'none';
@@ -591,8 +602,13 @@
                 
                 saveToStorage();
                 renderAll();
-                alert('Пост обновлён!');
+                alert('✅ Пост обновлён!');
                 return true;
+            } else {
+                // Пост не найден - сбрасываем редактирование
+                cancelEdit();
+                alert('Ошибка: пост не найден');
+                return false;
             }
         }
 
@@ -614,7 +630,7 @@
         renderAll();
         postInput.value = '';
         postInput.style.height = 'auto';
-        alert('Пост опубликован!');
+        alert('✅ Пост опубликован!');
         return true;
     }
 
@@ -787,6 +803,7 @@
             }
             if (e.key === 'Escape' && editingPost) {
                 cancelEdit();
+                renderAll();
             }
         });
     }
@@ -1001,7 +1018,36 @@
     // ========== ЗАПУСК ==========
     checkDeveloper();
     initVisitorCounter();
-    localStorage.removeItem('sovyonok_posts');
-    initDemoData();
+    // Удаляем эту строку, чтобы не сбрасывать данные при каждом обновлении
+    // localStorage.removeItem('sovyonok_posts');
+    
+    // Проверяем, есть ли данные в localStorage, если нет - загружаем демо
+    if (!loadFromStorage()) {
+        initDemoData();
+    } else {
+        // Загружаем чат из localStorage
+        try {
+            const savedChat = localStorage.getItem('sovyonok_chat');
+            if (savedChat) {
+                chatMessages = JSON.parse(savedChat);
+            } else {
+                // Если чата нет, но посты есть - инициализируем чат демо-данными
+                chatMessages = [
+                    { id: 'chat1', name: 'Мария', text: 'А кто-нибудь уже пробовал читать "Волшебника Изумрудного города" с детьми 4 лет?', isSovyonok: false },
+                    { id: 'chat2', name: 'Анна', text: 'Очень интересная тема! Моя дочка обожает сказки Пушкина', isSovyonok: false },
+                    { id: 'chat3', name: 'Елена', text: 'А как вы приучаете детей к чтению, если они не хотят сидеть на месте?', isSovyonok: false },
+                    { id: 'chat4', name: '', text: 'Спасибо за полезную информацию!', isSovyonok: false },
+                    { id: 'chat5', name: 'Ольга', text: 'Подскажите, какие книги подойдут для развития речи в 3 года?', isSovyonok: false },
+                    { id: 'chat6', name: 'Светлана', text: 'У нас дома целая библиотека! Дети любят рассматривать картинки', isSovyonok: false },
+                    { id: 'chat7', name: '', text: 'А где можно найти хорошие аудиосказки для детей?', isSovyonok: false },
+                    { id: 'chat8', name: 'Татьяна', text: 'Спасибо за ваш клуб! Очень полезная информация', isSovyonok: false }
+                ];
+                saveToStorage();
+            }
+        } catch (e) {
+            console.warn('Ошибка загрузки чата', e);
+        }
+    }
+    
     renderAll();
 })();
