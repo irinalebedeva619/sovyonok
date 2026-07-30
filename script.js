@@ -187,6 +187,15 @@
             .replace(/"/g, '&quot;');
     }
 
+    // Новая функция для преобразования текста с переносами в HTML
+    function formatTextWithBreaks(text) {
+        if (!text) return '';
+        // Экранируем HTML, но сохраняем переносы строк
+        const escaped = escapeHTML(text);
+        // Заменяем \n на <br>
+        return escaped.replace(/\n/g, '<br>');
+    }
+
     function getBookmarkCount() {
         return posts.filter(p => p.bookmarked).length;
     }
@@ -365,7 +374,7 @@
                         <span class="comment-author">${escapeHTML(comment.author)}</span>
                         ${deleteBtn}
                     </div>
-                    <div class="comment-text">${escapeHTML(comment.text)}</div>
+                    <div class="comment-text">${formatTextWithBreaks(comment.text)}</div>
                     <div class="comment-actions">
                         ${replyBtn}
                     </div>
@@ -442,7 +451,7 @@
                             ${deleteBtn}
                         </div>
                     </div>
-                    <div class="post-content">${escapeHTML(post.text)}</div>
+                    <div class="post-content">${formatTextWithBreaks(post.text)}</div>
                     ${imageHtml}
                     
                     <div class="post-actions">
@@ -560,7 +569,7 @@
             html += `
                 <div class="chat-message" data-msg-id="${msg.id}">
                     <div class="msg-name">${nameDisplay}</div>
-                    <div class="msg-text">${escapeHTML(msg.text)}</div>
+                    <div class="msg-text">${formatTextWithBreaks(msg.text)}</div>
                     ${deleteBtn}
                 </div>
             `;
@@ -588,6 +597,7 @@
         if (editingPost) {
             const post = posts.find(p => p.id === editingPost.postId);
             if (post) {
+                // Сохраняем текст с переносами строк
                 post.text = trimmed || '';
                 post.imageData = imageData || null;
                 
@@ -614,6 +624,7 @@
 
         const newPost = {
             id: generateId(),
+            // Сохраняем текст с переносами строк
             text: trimmed || '',
             likes: 0,
             likedByUser: false,
@@ -1018,8 +1029,6 @@
     // ========== ЗАПУСК ==========
     checkDeveloper();
     initVisitorCounter();
-    // Удаляем эту строку, чтобы не сбрасывать данные при каждом обновлении
-    // localStorage.removeItem('sovyonok_posts');
     
     // Проверяем, есть ли данные в localStorage, если нет - загружаем демо
     if (!loadFromStorage()) {
