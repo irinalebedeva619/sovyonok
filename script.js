@@ -4,8 +4,8 @@
     // ============================================================
     //  👇👇👇 СЮДА ВСТАВЬ СВОИ ДАННЫЕ ИЗ SUPABASE 👇👇👇
     // ============================================================
-    const SUPABASE_URL = 'https://ТВОЙ_ПРОЕКТ.supabase.co';  // ← СЮДА URL
-    const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_КЛЮЧ';              // ← СЮДА КЛЮЧ
+    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co/rest/v1/';  
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';  
     // ============================================================
 
     const TABLE_NAME = 'posts';
