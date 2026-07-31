@@ -12,6 +12,7 @@
     let visitorCount = 0;
     const DEV_PASSWORD = 'sovyonok2024';
     const MAX_IMAGE_SIZE = 150 * 1024; // 150KB максимум для фото
+    let warningShown = false; // Флаг, чтобы показывать предупреждение только 1 раз
 
     // ========== DOM ЭЛЕМЕНТЫ ==========
     const feedContainer = document.getElementById('feedContainer');
@@ -42,7 +43,6 @@
     // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
     function compressImage(dataUrl, maxSize = MAX_IMAGE_SIZE) {
         return new Promise((resolve) => {
-            // Если размер уже маленький - возвращаем как есть
             if (dataUrl.length < maxSize) {
                 resolve(dataUrl);
                 return;
@@ -53,7 +53,6 @@
                 let width = img.width;
                 let height = img.height;
                 
-                // Уменьшаем размер изображения
                 const maxDim = 800;
                 if (width > maxDim || height > maxDim) {
                     if (width > height) {
@@ -71,7 +70,6 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Пробуем разные качества
                 let quality = 0.8;
                 let result = canvas.toDataURL('image/jpeg', quality);
                 
@@ -207,7 +205,6 @@
                     posts = parsed;
                     console.log('✅ Загружено постов:', posts.length);
                     
-                    // Проверяем размер данных
                     const size = new Blob([savedPosts]).size;
                     console.log('📊 Размер данных:', (size / 1024 / 1024).toFixed(2), 'MB');
                     
@@ -223,33 +220,26 @@
 
     function saveToStorage() {
         try {
-            // Проверяем размер перед сохранением
             const data = JSON.stringify(posts);
             const size = new Blob([data]).size;
             
-            if (size > 4 * 1024 * 1024) { // 4MB предупреждение
-                console.warn('⚠️ Данные большие:', (size / 1024 / 1024).toFixed(2), 'MB');
-                if (!confirm('Данные занимают много места (' + (size / 1024 / 1024).toFixed(2) + ' MB).\nПродолжить сохранение?')) {
-                    return false;
-                }
+            // Только предупреждение в консоль, без всплывающего окна
+            if (size > 4 * 1024 * 1024 && !warningShown) {
+                console.warn('⚠️ Данные занимают много места:', (size / 1024 / 1024).toFixed(2), 'MB');
+                warningShown = true;
+                // Тихое предупреждение в консоль, без alert
             }
             
             localStorage.setItem('sovyonok_posts', data);
             localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
-            console.log('✅ Данные сохранены. Постов:', posts.length, 'Размер:', (size / 1024 / 1024).toFixed(2), 'MB');
+            console.log('✅ Данные сохранены. Постов:', posts.length);
             return true;
         } catch (e) {
             console.error('❌ Ошибка сохранения:', e);
             
+            // Показываем окно ТОЛЬКО при реальной ошибке сохранения
             if (e.name === 'QuotaExceededError') {
-                alert('❌ Не хватает места в хранилище!\n\n' +
-                      'Рекомендации:\n' +
-                      '1. Удалите посты с большими фото\n' +
-                      '2. Используйте фото меньшего размера\n' +
-                      '3. Очистите ненужные посты');
-                
-                // Предлагаем очистить большие фото
-                if (confirm('Очистить все фото из постов для освобождения места?')) {
+                if (confirm('❌ Не хватает места для сохранения!\n\nХотите удалить все фото из постов, чтобы освободить место?')) {
                     posts.forEach(post => {
                         post.imageData = null;
                     });
@@ -684,7 +674,6 @@
 
         let finalImageData = imageData;
         
-        // Сжимаем изображение, если оно есть
         if (imageData) {
             try {
                 finalImageData = await compressImage(imageData);
@@ -694,7 +683,6 @@
             }
         }
 
-        // Редактирование существующего поста
         if (editingPost) {
             console.log('✏️ Редактирование поста:', editingPost.postId);
             const post = posts.find(p => p.id === editingPost.postId);
@@ -702,7 +690,6 @@
                 post.text = trimmed || '';
                 post.imageData = finalImageData || null;
                 
-                // Сбрасываем состояние редактирования
                 editingPost = null;
                 currentImageData = null;
                 imagePreview.style.display = 'none';
@@ -724,7 +711,6 @@
             }
         }
 
-        // Создание нового поста
         console.log('📝 Создание нового поста');
         const newPost = {
             id: generateId(),
@@ -883,13 +869,11 @@
         });
     });
 
-    // Обработка загрузки изображения с автоматическим сжатием
     if (imageUpload) {
         imageUpload.addEventListener('change', async function(e) {
             if (this.files && this.files[0]) {
                 const file = this.files[0];
                 
-                // Проверяем размер файла
                 if (file.size > 5 * 1024 * 1024) {
                     alert('⚠️ Файл слишком большой (>5MB). Пожалуйста, выберите изображение меньше.');
                     this.value = '';
@@ -899,7 +883,6 @@
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     try {
-                        // Сжимаем изображение при загрузке
                         const compressed = await compressImage(e.target.result);
                         currentImageData = compressed;
                         previewImg.src = compressed;
