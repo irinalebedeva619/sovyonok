@@ -1,10 +1,11 @@
 (function() {
     "use strict";
 
-    // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА (ГОТОВО) ==========
+    // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА ==========
     const BIN_ID = '6a6c7899f5f4af5e29d98739';
     const API_KEY = '$2a$10$B.mxMWS0cPYt5wsZCbc4xOlHocB1VhEIata67OWReO1VNkSHk7.c6';
-    const BIN_NAME = 'sovyonok_posts';
+    const DEV_PASSWORD = 'sovyonok2024';
+    const MAX_IMAGE_SIZE = 150 * 1024;
 
     // ========== СОСТОЯНИЕ ==========
     let posts = [];
@@ -17,8 +18,6 @@
     let visitorCount = 0;
     let isSyncing = false;
     let lastSyncTime = 0;
-    const DEV_PASSWORD = 'sovyonok2024';
-    const MAX_IMAGE_SIZE = 150 * 1024;
 
     // ========== DOM ЭЛЕМЕНТЫ ==========
     const feedContainer = document.getElementById('feedContainer');
@@ -47,7 +46,6 @@
     const visitorCountEl = document.getElementById('visitorCount');
 
     // ========== РАБОТА С ОБЛАКОМ ==========
-
     function isCloudConfigured() {
         return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
     }
@@ -61,29 +59,25 @@
         try {
             console.log('☁️ Загрузка из облака...');
             const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: {
-                    'X-Master-Key': API_KEY
-                }
+                headers: { 'X-Master-Key': API_KEY }
             });
             
             if (response.ok) {
                 const data = await response.json();
-                if (data.record) {
-                    if (data.record.posts) {
-                        posts = data.record.posts;
-                    }
-                    if (data.record.chat) {
-                        chatMessages = data.record.chat;
-                    }
-                    console.log('✅ Загружено из облака:', posts.length, 'постов,', chatMessages.length, 'сообщений');
-                    lastSyncTime = Date.now();
+                if (data.record && data.record.posts && data.record.posts.length > 0) {
+                    posts = data.record.posts;
+                    chatMessages = data.record.chat || [];
+                    console.log('✅ Загружено из облака:', posts.length, 'постов');
                     saveToLocalStorage();
                     return true;
+                } else {
+                    console.log('☁️ В облаке нет данных');
+                    return false;
                 }
             } else {
                 console.warn('❌ Ошибка загрузки из облака:', response.status);
+                return false;
             }
-            return false;
         } catch (e) {
             console.warn('❌ Ошибка соединения с облаком:', e.message);
             return false;
@@ -91,29 +85,13 @@
     }
 
     async function saveToCloud() {
-        if (!isCloudConfigured() || isSyncing) {
-            return false;
-        }
-
-        if (Date.now() - lastSyncTime < 3000) {
-            return false;
-        }
+        if (!isCloudConfigured() || isSyncing) return false;
+        if (Date.now() - lastSyncTime < 3000) return false;
 
         isSyncing = true;
-        
         try {
-            console.log('☁️ Сохранение в облако...');
-            
-            const compressedPosts = posts.map(post => {
-                const newPost = { ...post };
-                if (newPost.imageData && newPost.imageData.length > 500 * 1024) {
-                    newPost.imageData = null;
-                }
-                return newPost;
-            });
-
             const data = {
-                posts: compressedPosts,
+                posts: posts,
                 chat: chatMessages,
                 updated: new Date().toISOString(),
                 version: '1.0'
@@ -146,7 +124,6 @@
     }
 
     // ========== РАБОТА С LOCALSTORAGE ==========
-
     function loadFromLocalStorage() {
         try {
             const savedPosts = localStorage.getItem('sovyonok_posts');
@@ -185,30 +162,12 @@
 
     function saveToLocalStorage() {
         try {
-            const data = JSON.stringify(posts);
-            const size = new Blob([data]).size;
-            
-            if (size > 4 * 1024 * 1024) {
-                console.warn('⚠️ Данные занимают много места:', (size / 1024 / 1024).toFixed(2), 'MB');
-            }
-            
-            localStorage.setItem('sovyonok_posts', data);
+            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
             localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
             console.log('💾 Сохранено в localStorage. Постов:', posts.length);
             return true;
         } catch (e) {
             console.error('❌ Ошибка сохранения в localStorage:', e);
-            
-            if (e.name === 'QuotaExceededError') {
-                if (confirm('❌ Не хватает места в браузере!\n\nХотите удалить все фото из постов для освобождения места?')) {
-                    posts.forEach(post => {
-                        post.imageData = null;
-                    });
-                    localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
-                    renderAll();
-                    alert('✅ Все фото удалены. Место освобождено!');
-                }
-            }
             return false;
         }
     }
@@ -222,69 +181,54 @@
         return localSaved;
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==========
-    async function initializeData() {
-        console.log('🚀 Инициализация данных...');
-        console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
+    // ========== ВОССТАНОВЛЕНИЕ ДАННЫХ ==========
+    async function restoreData() {
+        console.log('🔄 Восстановление данных...');
         
-        let dataLoaded = false;
+        // 1. Пробуем загрузить из localStorage
+        let hasLocalData = loadFromLocalStorage();
+        loadChatFromLocalStorage();
         
-        if (isCloudConfigured()) {
-            dataLoaded = await loadFromCloud();
-        }
-        
-        if (!dataLoaded) {
-            dataLoaded = loadFromLocalStorage();
-            loadChatFromLocalStorage();
-        }
-        
-        if (!dataLoaded || posts.length === 0) {
-            console.log('📦 Создание демо-данных...');
-            initDemoData();
-            await saveAll();
-        }
-        
-        renderAll();
-        
-        if (isCloudConfigured()) {
-            setTimeout(async () => {
-                await syncWithCloud();
-            }, 2000);
-        }
-        
-        console.log('🎉 Инициализация завершена! Постов:', posts.length);
-    }
-
-    async function syncWithCloud() {
-        if (!isCloudConfigured() || isSyncing) return;
-        
-        console.log('🔄 Синхронизация с облаком...');
-        const cloudData = await loadFromCloud();
-        
-        if (cloudData) {
+        if (hasLocalData && posts.length > 0) {
+            console.log('✅ Данные восстановлены из localStorage:', posts.length, 'постов');
             renderAll();
-            console.log('✅ Синхронизация завершена');
+            
+            // Отправляем локальные данные в облако
+            if (isCloudConfigured()) {
+                await saveToCloud();
+                console.log('✅ Локальные данные отправлены в облако');
+            }
+            return true;
         }
+        
+        // 2. Если в localStorage нет - пробуем облако
+        if (isCloudConfigured()) {
+            const cloudLoaded = await loadFromCloud();
+            if (cloudLoaded && posts.length > 0) {
+                console.log('✅ Данные восстановлены из облака:', posts.length, 'постов');
+                renderAll();
+                return true;
+            }
+        }
+        
+        // 3. Если ничего нет - создаем демо
+        console.log('📦 Создание демо-данных...');
+        initDemoData();
+        await saveAll();
+        renderAll();
+        return false;
     }
 
     // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
     function compressImage(dataUrl, maxSize = MAX_IMAGE_SIZE) {
         return new Promise((resolve) => {
-            if (!dataUrl) {
-                resolve(null);
-                return;
-            }
-            
-            if (dataUrl.length < maxSize) {
-                resolve(dataUrl);
-                return;
-            }
+            if (!dataUrl) { resolve(null); return; }
+            if (dataUrl.length < maxSize) { resolve(dataUrl); return; }
 
             const img = new Image();
             img.onload = function() {
                 let width = img.width;
                 let height = img.height;
-                
                 const maxDim = 800;
                 if (width > maxDim || height > maxDim) {
                     if (width > height) {
@@ -295,26 +239,20 @@
                         height = maxDim;
                     }
                 }
-
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-
                 let quality = 0.8;
                 let result = canvas.toDataURL('image/jpeg', quality);
-                
                 while (result.length > maxSize && quality > 0.2) {
                     quality -= 0.1;
                     result = canvas.toDataURL('image/jpeg', quality);
                 }
-                
                 resolve(result);
             };
-            img.onerror = function() {
-                resolve(dataUrl);
-            };
+            img.onerror = function() { resolve(dataUrl); };
             img.src = dataUrl;
         });
     }
@@ -324,19 +262,16 @@
         const today = new Date().toDateString();
         const lastVisit = localStorage.getItem('sovyonok_last_visit');
         const savedCount = localStorage.getItem('sovyonok_visitor_count');
-        
         if (savedCount) {
             visitorCount = parseInt(savedCount);
         } else {
             visitorCount = 2350;
         }
-        
         if (lastVisit !== today) {
             visitorCount += 1;
             localStorage.setItem('sovyonok_last_visit', today);
             localStorage.setItem('sovyonok_visitor_count', visitorCount.toString());
         }
-        
         updateVisitorCounter();
     }
 
@@ -410,7 +345,6 @@
         if (createArea) {
             createArea.style.display = isDeveloper ? 'block' : 'none';
         }
-        
         if (devLoginBtn) {
             if (isDeveloper) {
                 devLoginBtn.innerHTML = '<i class="fas fa-user-cog"></i> Разработчик';
@@ -446,8 +380,7 @@
 
     function formatTextWithBreaks(text) {
         if (!text) return '';
-        const escaped = escapeHTML(text);
-        return escaped.replace(/\n/g, '<br>');
+        return escapeHTML(text).replace(/\n/g, '<br>');
     }
 
     function getBookmarkCount() {
@@ -464,21 +397,16 @@
         updateVisitorCounter();
     }
 
-    // ========== ФУНКЦИЯ ДЛЯ ОБСУЖДЕНИЯ В ЧАТЕ ==========
+    // ========== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==========
     function discussInChat(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
-        
         currentDiscussPost = postId;
         const shortText = post.text.length > 50 ? post.text.substring(0, 50) + '...' : post.text;
         chatPostText.textContent = '"' + shortText + '"';
         chatPostRef.style.display = 'block';
-        
         switchPage('chat');
-        
-        setTimeout(() => {
-            chatMessageInput.focus();
-        }, 300);
+        setTimeout(() => { chatMessageInput.focus(); }, 300);
     }
 
     if (clearChatRef) {
@@ -488,20 +416,14 @@
         });
     }
 
-    // ========== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==========
     function switchPage(pageId) {
-        if (editingPost) {
-            cancelEdit();
-        }
-        
+        if (editingPost) cancelEdit();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const page = document.getElementById(pageId + 'Page');
         if (page) page.classList.add('active');
-        
         document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === pageId);
         });
-        
         if (pageId === 'feed') renderFeed(feedContainer, true);
         if (pageId === 'bookmarks') renderFeed(bookmarksContainer, false);
         if (pageId === 'chat') renderChat();
@@ -513,25 +435,11 @@
             alert('Только разработчик может редактировать посты!');
             return;
         }
-        
         const post = posts.find(p => p.id === postId);
-        if (!post) {
-            alert('Пост не найден!');
-            return;
-        }
-        
-        if (editingPost) {
-            cancelEdit();
-        }
-        
-        editingPost = {
-            postId: post.id,
-            text: post.text,
-            imageData: post.imageData
-        };
-        
+        if (!post) { alert('Пост не найден!'); return; }
+        if (editingPost) cancelEdit();
+        editingPost = { postId: post.id, text: post.text, imageData: post.imageData };
         postInput.value = post.text;
-        
         if (post.imageData) {
             currentImageData = post.imageData;
             previewImg.src = post.imageData;
@@ -541,20 +449,14 @@
             imagePreview.style.display = 'none';
             previewImg.src = '#';
         }
-        
         publishBtn.innerHTML = '💾 Сохранить изменения';
         publishBtn.style.background = 'linear-gradient(135deg, #f5b342, #e8926a)';
-        
         const feedPage = document.getElementById('feedPage');
-        if (!feedPage.classList.contains('active')) {
-            switchPage('feed');
-        }
-        
+        if (!feedPage.classList.contains('active')) switchPage('feed');
         document.getElementById('createPostArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
         postInput.focus();
     }
 
-    // ========== ОТМЕНА РЕДАКТИРОВАНИЯ ==========
     function cancelEdit() {
         if (editingPost) {
             editingPost = null;
@@ -569,11 +471,7 @@
 
     // ========== УДАЛЕНИЕ ПОСТА ==========
     function deletePost(postId) {
-        if (!isDeveloper) {
-            alert('Только разработчик может удалять посты!');
-            return false;
-        }
-        
+        if (!isDeveloper) { alert('Только разработчик может удалять посты!'); return false; }
         if (confirm('Вы уверены, что хотите удалить этот пост?')) {
             posts = posts.filter(p => p.id !== postId);
             saveAll();
@@ -584,13 +482,8 @@
         return false;
     }
 
-    // ========== УДАЛЕНИЕ СООБЩЕНИЯ В ЧАТЕ ==========
     function deleteChatMessage(msgId) {
-        if (!isDeveloper) {
-            alert('Только разработчик может удалять сообщения!');
-            return false;
-        }
-        
+        if (!isDeveloper) { alert('Только разработчик может удалять сообщения!'); return false; }
         if (confirm('Удалить это сообщение?')) {
             chatMessages = chatMessages.filter(m => m.id !== msgId);
             saveAll();
@@ -600,28 +493,21 @@
         return false;
     }
 
-    // ========== РЕНДЕРИНГ КОММЕНТАРИЕВ ==========
+    // ========== РЕНДЕРИНГ ==========
     function renderComments(comments, postId, isReply = false) {
         if (!comments || comments.length === 0) return '';
-        
         let html = '';
         for (const comment of comments) {
             const repliesHtml = comment.replies && comment.replies.length > 0 
-                ? `<div class="replies">${renderComments(comment.replies, postId, true)}</div>` 
-                : '';
-            
+                ? `<div class="replies">${renderComments(comment.replies, postId, true)}</div>` : '';
             const replyBtn = !isReply ? `
                 <button class="reply-btn" data-reply-to="${postId}|${comment.id}|${escapeHTML(comment.author)}">
                     <i class="fas fa-reply"></i> Ответить
-                </button>
-            ` : '';
-
+                </button>` : '';
             const deleteBtn = isDeveloper ? `
                 <span class="comment-delete" data-del-comment="${postId}|${comment.id}">
                     <i class="fas fa-times"></i>
-                </span>
-            ` : '';
-
+                </span>` : '';
             html += `
                 <div class="comment-item" data-comment-id="${comment.id}">
                     <div class="comment-header">
@@ -629,20 +515,15 @@
                         ${deleteBtn}
                     </div>
                     <div class="comment-text">${formatTextWithBreaks(comment.text)}</div>
-                    <div class="comment-actions">
-                        ${replyBtn}
-                    </div>
+                    <div class="comment-actions">${replyBtn}</div>
                     ${repliesHtml}
-                </div>
-            `;
+                </div>`;
         }
         return html;
     }
 
-    // ========== РЕНДЕРИНГ ЛЕНТЫ ==========
     function renderFeed(container = feedContainer, showAll = true) {
         let filteredPosts = showAll ? posts : posts.filter(p => p.bookmarked);
-        
         if (!filteredPosts.length) {
             const message = showAll ? 'Новостей пока нет' : 'У вас пока нет сохранённых постов';
             container.innerHTML = `
@@ -650,11 +531,9 @@
                     <i class="far ${showAll ? 'fa-newspaper' : 'fa-bookmark'}"></i>
                     <p>${message}</p>
                     ${showAll ? '<p style="font-size:0.85rem; opacity:0.6;">Добро пожаловать в клуб "Совёнок"!</p>' : ''}
-                </div>
-            `;
+                </div>`;
             return;
         }
-
         let html = '';
         for (let i = 0; i < filteredPosts.length; i++) {
             const post = filteredPosts[i];
@@ -662,73 +541,49 @@
             const likes = post.likes || 0;
             const liked = post.likedByUser || false;
             const bookmarked = post.bookmarked || false;
-
-            let imageHtml = '';
-            if (post.imageData) {
-                imageHtml = `
-                    <div class="post-image">
-                        <img src="${escapeHTML(post.imageData)}" alt="Изображение к посту" loading="lazy" />
-                    </div>
-                `;
-            }
-
+            let imageHtml = post.imageData ? `
+                <div class="post-image">
+                    <img src="${escapeHTML(post.imageData)}" alt="Изображение к посту" loading="lazy" />
+                </div>` : '';
             const deleteBtn = isDeveloper ? `
                 <button class="delete-post-btn" data-delete-post="${post.id}" title="Удалить пост">
                     <i class="fas fa-trash-alt"></i>
-                </button>
-            ` : '';
-
+                </button>` : '';
             const editBtn = isDeveloper ? `
                 <button class="edit-post-btn" data-edit-post="${post.id}" title="Редактировать пост">
                     <i class="fas fa-pen"></i>
-                </button>
-            ` : '';
-
+                </button>` : '';
             let replyIndicator = '';
             if (replyToComment && replyToComment.postId === post.id) {
                 replyIndicator = `
                     <div style="background:#fef5ea; padding:6px 12px; border-radius:12px; margin-bottom:6px; font-size:0.8rem; color:#5a2d0c; border:2px dashed #f5a97f;">
                         <i class="fas fa-reply"></i> Ответ для <strong>${escapeHTML(replyToComment.author)}</strong>
                         <button id="cancelReply" style="background:none; border:none; color:#ff6b6b; cursor:pointer; margin-left:8px;">✕</button>
-                    </div>
-                `;
+                    </div>`;
             }
-
             html += `
                 <div class="post-card" data-post-id="${post.id}">
                     <div class="post-header">
-                        <div class="post-author">
-                            <i class="fas fa-feather-alt"></i> Совёнок
-                        </div>
-                        <div class="post-header-actions">
-                            ${editBtn}
-                            ${deleteBtn}
-                        </div>
+                        <div class="post-author"><i class="fas fa-feather-alt"></i> Совёнок</div>
+                        <div class="post-header-actions">${editBtn}${deleteBtn}</div>
                     </div>
                     <div class="post-content">${formatTextWithBreaks(post.text)}</div>
                     ${imageHtml}
-                    
                     <div class="post-actions">
                         <button class="action-btn ${liked ? 'liked' : ''}" data-like="${post.id}">
-                            <i class="${liked ? 'fas' : 'far'} fa-heart"></i>
-                            <span>${likes}</span>
+                            <i class="${liked ? 'fas' : 'far'} fa-heart"></i><span>${likes}</span>
                         </button>
-                        
                         <button class="action-btn ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${post.id}">
                             <i class="${bookmarked ? 'fas' : 'far'} fa-bookmark"></i>
                             <span>${bookmarked ? 'В закладках' : 'Закладка'}</span>
                         </button>
-                        
                         <button class="action-btn" data-comment-toggle="${post.id}">
-                            <i class="far fa-comment"></i>
-                            <span>${comments.length}</span>
+                            <i class="far fa-comment"></i><span>${comments.length}</span>
                         </button>
-                        
                         <button class="discuss-btn" data-discuss="${post.id}">
                             <i class="fas fa-comments"></i> Обсудить в чате
                         </button>
                     </div>
-
                     <div class="comment-section">
                         ${replyIndicator}
                         <div class="comment-input-wrap">
@@ -739,48 +594,27 @@
                             ${renderComments(comments, post.id)}
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
-
         container.innerHTML = html;
-        
         const cancelBtn = document.getElementById('cancelReply');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
-                replyToComment = null;
-                renderAll();
-            });
-        }
-        
+        if (cancelBtn) cancelBtn.addEventListener('click', function() { replyToComment = null; renderAll(); });
         document.querySelectorAll('.reply-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const data = this.dataset.replyTo.split('|');
-                replyToComment = {
-                    postId: data[0],
-                    commentId: data[1],
-                    author: data[2]
-                };
+                replyToComment = { postId: data[0], commentId: data[1], author: data[2] };
                 renderAll();
                 const input = document.querySelector(`input[data-comment-input="${replyToComment.postId}"]`);
-                if (input) {
-                    input.focus();
-                    input.placeholder = `Ответ для ${replyToComment.author}...`;
-                }
+                if (input) { input.focus(); input.placeholder = `Ответ для ${replyToComment.author}...`; }
             });
         });
-
         document.querySelectorAll('.edit-post-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                startEditPost(this.dataset.editPost);
-            });
+            btn.addEventListener('click', function() { startEditPost(this.dataset.editPost); });
         });
-        
         updateCounters();
         saveAll();
     }
 
-    // ========== РЕНДЕРИНГ ВСЕГО ==========
     function renderAll() {
         renderFeed(feedContainer, true);
         renderFeed(bookmarksContainer, false);
@@ -788,7 +622,6 @@
         updateCounters();
     }
 
-    // ========== РЕНДЕРИНГ ЧАТА ==========
     function renderChat() {
         if (!chatMessages.length) {
             chatMessagesEl.innerHTML = `
@@ -796,39 +629,25 @@
                     <i class="fas fa-comment-dots" style="font-size:1.8rem; opacity:0.3;"></i>
                     <p>Вопросов пока нет</p>
                     <p style="font-size:0.8rem; opacity:0.6;">Задайте первый вопрос о книгах или чтении!</p>
-                </div>
-            `;
+                </div>`;
             return;
         }
-
         let html = '';
         for (let i = chatMessages.length - 1; i >= 0; i--) {
             const msg = chatMessages[i];
-            
-            let nameDisplay;
-            if (msg.isSovyonok) {
-                nameDisplay = '<span class="sovyonok">🦉 Совёнок</span>';
-            } else if (msg.name) {
-                nameDisplay = escapeHTML(msg.name);
-            } else {
-                nameDisplay = '<span class="anonymous">Аноним</span>';
-            }
-            
+            let nameDisplay = msg.isSovyonok ? '<span class="sovyonok">🦉 Совёнок</span>' :
+                            msg.name ? escapeHTML(msg.name) : '<span class="anonymous">Аноним</span>';
             const deleteBtn = isDeveloper ? `
                 <button class="msg-delete" data-delete-chat="${msg.id}">
                     <i class="fas fa-times"></i>
-                </button>
-            ` : '';
-
+                </button>` : '';
             html += `
                 <div class="chat-message" data-msg-id="${msg.id}">
                     <div class="msg-name">${nameDisplay}</div>
                     <div class="msg-text">${formatTextWithBreaks(msg.text)}</div>
                     ${deleteBtn}
-                </div>
-            `;
+                </div>`;
         }
-        
         chatMessagesEl.innerHTML = html;
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
         updateCounters();
@@ -837,37 +656,27 @@
 
     // ========== СОХРАНЕНИЕ/ПУБЛИКАЦИЯ ПОСТА ==========
     async function savePost(text, imageData) {
-        console.log('🔍 savePost вызван, isDeveloper:', isDeveloper);
-        
         if (!isDeveloper) {
             alert('❌ Только разработчик может публиковать посты!\nВойдите как разработчик (пароль: sovyonok2024)');
             return false;
         }
-        
         const trimmed = text.trim();
         if (!trimmed && !imageData) {
             alert('Напишите текст или прикрепите фото!');
             return false;
         }
-
         let finalImageData = imageData;
-        
         if (imageData) {
             try {
                 finalImageData = await compressImage(imageData);
                 console.log('🖼️ Изображение сжато. Размер:', (finalImageData.length / 1024).toFixed(1), 'KB');
-            } catch (e) {
-                console.warn('Ошибка сжатия:', e);
-            }
+            } catch (e) { console.warn('Ошибка сжатия:', e); }
         }
-
         if (editingPost) {
-            console.log('✏️ Редактирование поста:', editingPost.postId);
             const post = posts.find(p => p.id === editingPost.postId);
             if (post) {
                 post.text = trimmed || '';
                 post.imageData = finalImageData || null;
-                
                 editingPost = null;
                 currentImageData = null;
                 imagePreview.style.display = 'none';
@@ -875,7 +684,6 @@
                 postInput.value = '';
                 publishBtn.innerHTML = 'Опубликовать';
                 publishBtn.style.background = '';
-                
                 await saveAll();
                 renderAll();
                 alert('✅ Пост обновлён!');
@@ -886,8 +694,6 @@
                 return false;
             }
         }
-
-        console.log('📝 Создание нового поста');
         const newPost = {
             id: generateId(),
             text: trimmed || '',
@@ -897,17 +703,14 @@
             imageData: finalImageData || null,
             comments: []
         };
-
         posts.unshift(newPost);
         currentImageData = null;
         imagePreview.style.display = 'none';
         previewImg.src = '#';
-        
         await saveAll();
         renderAll();
         postInput.value = '';
         postInput.style.height = 'auto';
-        
         alert('✅ Пост опубликован!');
         return true;
     }
@@ -915,64 +718,35 @@
     // ========== ДОБАВЛЕНИЕ КОММЕНТАРИЯ ==========
     function addComment(postId, text) {
         const trimmed = text.trim();
-        if (!trimmed) {
-            alert('Напишите комментарий!');
-            return false;
-        }
-        
+        if (!trimmed) { alert('Напишите комментарий!'); return false; }
         const post = posts.find(p => p.id === postId);
         if (!post) return false;
-        
         if (replyToComment && replyToComment.postId === postId) {
             const parentComment = post.comments.find(c => c.id === replyToComment.commentId);
             if (parentComment) {
                 if (!parentComment.replies) parentComment.replies = [];
-                parentComment.replies.push({
-                    id: generateId(),
-                    text: trimmed,
-                    author: 'Аноним'
-                });
+                parentComment.replies.push({ id: generateId(), text: trimmed, author: 'Аноним' });
                 replyToComment = null;
                 saveAll();
                 renderAll();
                 return true;
             }
         }
-        
-        post.comments.push({
-            id: generateId(),
-            text: trimmed,
-            author: 'Аноним',
-            replies: []
-        });
+        post.comments.push({ id: generateId(), text: trimmed, author: 'Аноним', replies: [] });
         saveAll();
         renderAll();
         return true;
     }
 
-    // ========== УДАЛЕНИЕ КОММЕНТАРИЯ ==========
     function deleteComment(postId, commentId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
-        
-        let found = false;
         for (const c of post.comments) {
-            if (c.id === commentId) {
-                post.comments = post.comments.filter(c => c.id !== commentId);
-                found = true;
-                break;
-            }
+            if (c.id === commentId) { post.comments = post.comments.filter(c => c.id !== commentId); break; }
             if (c.replies) {
                 const replyIndex = c.replies.findIndex(r => r.id === commentId);
-                if (replyIndex !== -1) {
-                    c.replies.splice(replyIndex, 1);
-                    found = true;
-                    break;
-                }
+                if (replyIndex !== -1) { c.replies.splice(replyIndex, 1); break; }
             }
-        }
-        if (!found) {
-            post.comments = post.comments.filter(c => c.id !== commentId);
         }
         saveAll();
         renderAll();
@@ -981,11 +755,7 @@
     // ========== ДОБАВЛЕНИЕ СООБЩЕНИЯ В ЧАТ ==========
     function addChatMessage(name, text) {
         const trimmed = text.trim();
-        if (!trimmed) {
-            alert('Напишите вопрос!');
-            return false;
-        }
-        
+        if (!trimmed) { alert('Напишите вопрос!'); return false; }
         let messageText = trimmed;
         if (currentDiscussPost) {
             const post = posts.find(p => p.id === currentDiscussPost);
@@ -996,26 +766,20 @@
                 currentDiscussPost = null;
             }
         }
-        
-        const isSovyonok = isDeveloper;
-        const displayName = isDeveloper ? '' : (name ? name.trim() : '');
-        
         chatMessages.push({
             id: generateId(),
-            name: displayName,
+            name: isDeveloper ? '' : (name ? name.trim() : ''),
             text: messageText,
-            isSovyonok: isSovyonok
+            isSovyonok: isDeveloper
         });
         saveAll();
         renderChat();
         chatMessageInput.value = '';
-        if (!isDeveloper) {
-            chatNameInput.value = '';
-        }
+        if (!isDeveloper) chatNameInput.value = '';
         return true;
     }
 
-    // ========== ЛАЙК ==========
+    // ========== ЛАЙК И ЗАКЛАДКА ==========
     function toggleLike(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -1026,7 +790,6 @@
         renderAll();
     }
 
-    // ========== ЗАКЛАДКА ==========
     function toggleBookmark(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -1045,7 +808,6 @@
             '🎨 Творческая встреча: рисуем иллюстрации к любимым сказкам!',
             '📚 Подборка книг для детей 3-4 лет'
         ];
-
         posts = [];
         for (let i = 0; i < texts.length; i++) {
             posts.push({
@@ -1058,33 +820,27 @@
                 comments: []
             });
         }
-        
         chatMessages = [
             { id: 'chat1', name: 'Мария', text: 'А кто-нибудь уже пробовал читать "Волшебника Изумрудного города" с детьми 4 лет?', isSovyonok: false },
             { id: 'chat2', name: 'Анна', text: 'Очень интересная тема! Моя дочка обожает сказки Пушкина', isSovyonok: false }
         ];
-        
         console.log('📦 Созданы демо-данные:', posts.length, 'постов');
     }
 
     // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
     document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            switchPage(this.dataset.tab);
-        });
+        btn.addEventListener('click', function() { switchPage(this.dataset.tab); });
     });
 
     if (imageUpload) {
         imageUpload.addEventListener('change', async function(e) {
             if (this.files && this.files[0]) {
                 const file = this.files[0];
-                
                 if (file.size > 5 * 1024 * 1024) {
-                    alert('⚠️ Файл слишком большой (>5MB). Пожалуйста, выберите изображение меньше.');
+                    alert('⚠️ Файл слишком большой (>5MB)');
                     this.value = '';
                     return;
                 }
-                
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     try {
@@ -1092,7 +848,6 @@
                         currentImageData = compressed;
                         previewImg.src = compressed;
                         imagePreview.style.display = 'block';
-                        console.log('🖼️ Изображение загружено, размер:', (compressed.length / 1024).toFixed(1), 'KB');
                     } catch (error) {
                         console.error('Ошибка обработки изображения:', error);
                         alert('Ошибка обработки изображения');
@@ -1114,9 +869,7 @@
 
     if (publishBtn) {
         publishBtn.addEventListener('click', function() {
-            console.log('🖱️ Кнопка "Опубликовать" нажата');
-            const text = postInput.value;
-            savePost(text, currentImageData);
+            savePost(postInput.value, currentImageData);
         });
     }
 
@@ -1135,9 +888,7 @@
 
     if (chatSendBtn) {
         chatSendBtn.addEventListener('click', function() {
-            const name = chatNameInput.value;
-            const text = chatMessageInput.value;
-            addChatMessage(name, text);
+            addChatMessage(chatNameInput.value, chatMessageInput.value);
         });
     }
 
@@ -1154,46 +905,21 @@
     document.addEventListener('click', function(e) {
         const target = e.target.closest('button');
         if (!target) return;
-
-        if (target.dataset.discuss) {
-            discussInChat(target.dataset.discuss);
-            return;
-        }
-
-        if (target.dataset.deletePost) {
-            deletePost(target.dataset.deletePost);
-            return;
-        }
-
-        if (target.dataset.deleteChat) {
-            deleteChatMessage(target.dataset.deleteChat);
-            return;
-        }
-
-        if (target.dataset.like) {
-            toggleLike(target.dataset.like);
-            return;
-        }
-
-        if (target.dataset.bookmark) {
-            toggleBookmark(target.dataset.bookmark);
-            return;
-        }
-
+        if (target.dataset.discuss) { discussInChat(target.dataset.discuss); return; }
+        if (target.dataset.deletePost) { deletePost(target.dataset.deletePost); return; }
+        if (target.dataset.deleteChat) { deleteChatMessage(target.dataset.deleteChat); return; }
+        if (target.dataset.like) { toggleLike(target.dataset.like); return; }
+        if (target.dataset.bookmark) { toggleBookmark(target.dataset.bookmark); return; }
         if (target.dataset.commentAdd) {
             const postId = target.dataset.commentAdd;
             const input = document.querySelector(`input[data-comment-input="${postId}"]`);
             if (input) {
                 addComment(postId, input.value);
                 input.value = '';
-                if (replyToComment) {
-                    replyToComment = null;
-                    renderAll();
-                }
+                if (replyToComment) { replyToComment = null; renderAll(); }
             }
             return;
         }
-
         if (target.dataset.commentToggle) {
             const postId = target.dataset.commentToggle;
             const input = document.querySelector(`input[data-comment-input="${postId}"]`);
@@ -1218,27 +944,22 @@
             const postId = e.target.dataset.commentInput;
             addComment(postId, e.target.value);
             e.target.value = '';
-            if (replyToComment) {
-                replyToComment = null;
-                renderAll();
-            }
+            if (replyToComment) { replyToComment = null; renderAll(); }
         }
     });
 
     // ========== ЗАПУСК ==========
     console.log('🚀 Запуск приложения...');
-    console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
-    
     checkDeveloper();
     initVisitorCounter();
     
-    initializeData().then(() => {
+    // Восстанавливаем данные
+    restoreData().then(() => {
         console.log('🎉 Приложение готово!');
         console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
         console.log('📊 Всего постов:', posts.length);
-        console.log('💬 Всего сообщений в чате:', chatMessages.length);
         
-        // Автоматическая синхронизация каждые 30 секунд
+        // Авто-синхронизация каждые 30 секунд
         setInterval(async () => {
             if (isCloudConfigured()) {
                 await saveToCloud();
