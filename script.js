@@ -2,8 +2,8 @@
     "use strict";
 
     // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА ==========
-    const BIN_ID = '6a6d0b8ff5f4af5e29dbab16';
-    const API_KEY = '$2a$10$u9wHlBKkXdTa63zl696Ej.bRVl3Y8bpjo0kpjJLaqT3AJ/ffoJwOG';
+    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co/rest/v1/'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';
     const DEV_PASSWORD = 'sovyonok2024';
     const MAX_IMAGE_SIZE = 150 * 1024;
 
