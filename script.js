@@ -45,7 +45,7 @@
     const clearChatRef = document.getElementById('clearChatRef');
     const visitorCountEl = document.getElementById('visitorCount');
 
-    // ========== 60 ДЕМО ПОСТОВ ==========
+    // ========== 60 ДЕМО ПОСТОВ (ТОЛЬКО ДЛЯ ПЕРВОГО ЗАПУСКА) ==========
     function createDemoPosts() {
         const texts = [
             '📚 Сегодня читали "Колобка" с малышами — восторг! Дети просто влюбились в этого хитрого героя!',
@@ -119,7 +119,6 @@
             46,38,54,40,48,42,51,37,49,44
         ];
 
-        posts = [];
         for (let i = 0; i < 60; i++) {
             posts.push({
                 id: 'p' + (i + 1),
@@ -142,6 +141,40 @@
     // ========== РАБОТА С ОБЛАКОМ ==========
     function isCloudConfigured() {
         return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
+    }
+
+    async function loadFromCloud() {
+        if (!isCloudConfigured()) {
+            console.log('☁️ Облако не настроено');
+            return false;
+        }
+
+        try {
+            console.log('☁️ Загрузка из облака...');
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.record && data.record.posts && data.record.posts.length > 0) {
+                    posts = data.record.posts;
+                    chatMessages = data.record.chat || [];
+                    console.log('✅ Загружено из облака:', posts.length, 'постов');
+                    saveToLocalStorage();
+                    return true;
+                } else {
+                    console.log('☁️ В облаке нет данных');
+                    return false;
+                }
+            } else {
+                console.warn('❌ Ошибка загрузки из облака:', response.status);
+                return false;
+            }
+        } catch (e) {
+            console.warn('❌ Ошибка соединения с облаком:', e.message);
+            return false;
+        }
     }
 
     async function saveToCloud() {
@@ -184,6 +217,42 @@
     }
 
     // ========== РАБОТА С LOCALSTORAGE ==========
+    function loadFromLocalStorage() {
+        try {
+            const savedPosts = localStorage.getItem('sovyonok_posts');
+            if (savedPosts) {
+                const parsed = JSON.parse(savedPosts);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    posts = parsed;
+                    console.log('💾 Загружено из localStorage:', posts.length, 'постов');
+                    return true;
+                }
+            }
+            return false;
+        } catch (e) {
+            console.warn('❌ Ошибка загрузки из localStorage:', e);
+            return false;
+        }
+    }
+
+    function loadChatFromLocalStorage() {
+        try {
+            const savedChat = localStorage.getItem('sovyonok_chat');
+            if (savedChat) {
+                const parsed = JSON.parse(savedChat);
+                if (Array.isArray(parsed)) {
+                    chatMessages = parsed;
+                    console.log('💾 Загружено чатов из localStorage:', chatMessages.length);
+                    return true;
+                }
+            }
+            return false;
+        } catch (e) {
+            console.warn('❌ Ошибка загрузки чата из localStorage:', e);
+            return false;
+        }
+    }
+
     function saveToLocalStorage() {
         try {
             localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
@@ -203,6 +272,37 @@
             await saveToCloud();
         }
         return localSaved;
+    }
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==========
+    async function initializeData() {
+        console.log('🚀 Инициализация данных...');
+        console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
+        
+        let dataLoaded = false;
+        
+        // 1. Пробуем загрузить из облака
+        if (isCloudConfigured()) {
+            dataLoaded = await loadFromCloud();
+        }
+        
+        // 2. Если облако не сработало - загружаем из localStorage
+        if (!dataLoaded) {
+            dataLoaded = loadFromLocalStorage();
+            loadChatFromLocalStorage();
+        }
+        
+        // 3. Если данных нет - создаём 60 демо-постов (ТОЛЬКО ПРИ ПЕРВОМ ЗАПУСКЕ)
+        if (!dataLoaded || posts.length === 0) {
+            console.log('📦 Данных нет. Создаём 60 демо-постов...');
+            createDemoPosts();
+            await saveAll();
+        } else {
+            console.log('✅ Загружено', posts.length, 'постов');
+        }
+        
+        renderAll();
+        console.log('🎉 Инициализация завершена! Постов:', posts.length);
     }
 
     // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
@@ -910,23 +1010,17 @@
     checkDeveloper();
     initVisitorCounter();
     
-    // ПРИНУДИТЕЛЬНО СОЗДАЁМ 60 ПОСТОВ ПРИ КАЖДОМ ЗАПУСКЕ
-    createDemoPosts();
-    saveToLocalStorage();
-    
-    // Отправляем в облако
-    saveToCloud().then(() => {
-        renderAll();
+    initializeData().then(() => {
         console.log('🎉 Приложение готово!');
         console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
         console.log('📊 Всего постов:', posts.length);
+        
+        // Авто-синхронизация каждые 30 секунд
+        setInterval(async () => {
+            if (isCloudConfigured()) {
+                await saveToCloud();
+            }
+        }, 30000);
     });
-
-    // Авто-синхронизация каждые 30 секунд
-    setInterval(async () => {
-        if (isCloudConfigured()) {
-            await saveToCloud();
-        }
-    }, 30000);
 
 })();
