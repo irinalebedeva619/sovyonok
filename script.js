@@ -1,9 +1,14 @@
 (function() {
     "use strict";
 
-    // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА ==========
-    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co/rest/v1/'; 
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';
+    // ============================================================
+    //  👇👇👇 СЮДА ВСТАВЬ СВОИ ДАННЫЕ ИЗ SUPABASE 👇👇👇
+    // ============================================================
+    const SUPABASE_URL = 'https://ТВОЙ_ПРОЕКТ.supabase.co';  // ← СЮДА URL
+    const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_КЛЮЧ';              // ← СЮДА КЛЮЧ
+    // ============================================================
+
+    const TABLE_NAME = 'posts';
     const DEV_PASSWORD = 'sovyonok2024';
     const MAX_IMAGE_SIZE = 150 * 1024;
 
@@ -17,9 +22,8 @@
     let editingPost = null;
     let visitorCount = 0;
     let isSyncing = false;
-    let lastSyncTime = 0;
 
-    // ========== DOM ЭЛЕМЕНТЫ ==========
+    // ========== DOM ==========
     const feedContainer = document.getElementById('feedContainer');
     const bookmarksContainer = document.getElementById('bookmarksContainer');
     const postInput = document.getElementById('postInput');
@@ -48,66 +52,66 @@
     // ========== 60 ДЕМО ПОСТОВ ==========
     function createDemoPosts() {
         const texts = [
-            '📚 Сегодня читали "Колобка" с малышами — восторг! Дети просто влюбились в этого хитрого героя!',
-            '🌟 Как привить любовь к чтению с пелёнок? Делитесь опытом! У нас получается через яркие картинки.',
-            '🦉 В клубе "Совёнок" стартует марафон "Сказка на ночь"! Присоединяйтесь!',
-            '📖 Какие книги вы читаете с детьми перед сном? Мы любим про животных.',
-            '🎨 Творческая встреча: рисуем иллюстрации к любимым сказкам! Ждём всех!',
-            '📚 Подборка книг для детей 3-4 лет. Самые интересные и полезные!',
-            '🌟 Чтение развивает фантазию и речь. Это доказано! Читайте детям каждый день.',
-            '🦉 Родительский клуб: обмен опытом. Как вы выбираете книги для детей?',
-            '📖 Уютные вечера с книгой — лучший отдых для всей семьи. Проверено!',
-            '🎨 Как выбрать книгу по возрасту? Делюсь личным опытом и рекомендациями.',
-            '📚 Читаем вместе с детьми — строим будущее. Каждая книга оставляет след в душе ребёнка.',
-            '🌟 Сказки народов мира. Мы начали с русских народных сказок!',
-            '🦉 Игровые методики обучения чтению. Играем и учимся одновременно!',
-            '📖 Книги с картинками — первые шаги в мир чтения. Наши фавориты!',
-            '🎨 Театр теней по сказкам. Дети в восторге от такого представления!',
-            '📚 Читательский дневник: идеи для заполнения. Делюсь нашими наработками.',
-            '🌟 Приобщаем к чтению с раннего возраста. Важно начать вовремя!',
-            '🦉 Семейные традиции: чтение по кругу. Каждый вечер собираемся вместе.',
-            '📖 Как отвечать на вопросы детей о прочитанном? Советы психолога.',
-            '🎨 Рисуем героев сказок. Творчество и чтение идут рука об руку.',
-            '📚 Подборка книг для малышей 1-2 лет. Самые безопасные и интересные.',
-            '🌟 Как превратить чтение в праздник? Устраиваем книжные вечеринки!',
-            '🦉 Развитие речи через чтение. Заметные результаты уже через месяц!',
-            '📖 Ваша любимая детская книга? Делитесь! Наша — "Винни-Пух"',
-            '📚 Библиотека в детском саду: наши мероприятия. Приходите к нам!',
-            '🎨 Конкурс рисунков по мотивам прочитанных книг. Приз — новая книга!',
-            '🌟 Сказкотерапия для детей. Чудесный метод решения детских проблем.',
-            '📖 Чтение с детьми — основа развития. Вкладываем в будущее!',
-            '🦉 Вечерние сказки: традиция нашей семьи. Каждый вечер — новая история.',
-            '📚 Календарь чтения на месяц. Планируем вместе с детьми!',
-            '🎨 Театрализованные представления по сказкам. Дети — главные актёры!',
-            '🌟 Игры по мотивам любимых книг. Учимся играя!',
-            '📖 Моя первая книга: что выбрать? Рассказываем о нашем выборе.',
-            '🦉 Книжный клуб для самых маленьких. Даже малышам интересно!',
-            '📚 Семейное чтение: что это даёт ребёнку? Сплочение и развитие.',
-            '🎨 Иллюстрации к стихам Агнии Барто. Творческое задание для детей.',
-            '🌟 Книги о дружбе и добре. Учим детей важным вещам через книги.',
-            '📖 Как читать детям, чтобы им было интересно? Интерактивные методы.',
-            '🦉 Наша библиотека: книжные новинки. Что появилось на полках?',
-            '📚 Развиваем эмоциональный интеллект через книги. Читаем и чувствуем!',
-            '🎨 Творческие задания по прочитанному. Рисуем, лепим, мастерим!',
-            '🌟 Стихи и сказки для малышей. Наша подборка на каждый день.',
-            '📖 Книги о природе для детей. Открываем мир вокруг нас.',
-            '🦉 Как сохранить интерес к чтению на долгие годы? Секреты опытных родителей.',
-            '📚 Читаем вместе: семейный опыт. Истории наших читателей.',
-            '🎨 Рисуем персонажей сказок. Кто ваш любимый герой?',
-            '🌟 Воспитание книгой: как это работает? Делимся наблюдениями.',
-            '📖 Какие книги читать детям 5-6 лет? Уже можно и энциклопедии!',
-            '🦉 Детская поэзия: учим стихи с удовольствием. Наши любимые поэты.',
-            '📚 Как выбрать книгу для ребёнка в магазине? Советы по выбору.',
-            '🎨 Мастер-класс: создаём книгу своими руками. Творим вместе с детьми!',
-            '🌟 Сказки в дорогу: что взять в поездку? Компактные книжки для путешествий.',
-            '📖 Чтение перед сном: традиция на все времена. Волшебный ритуал.',
-            '🦉 Книги о животных для дошкольников. Учимся любить природу.',
-            '📚 Как обсуждать прочитанное с ребёнком? Развиваем речь и мышление.',
-            '🎨 Интерактивные книги: наш опыт. Книги с движущимися элементами!',
-            '🌟 Читаем вместе в выходной день. Лучший семейный досуг.',
-            '📖 Книги для развития речи и мышления. Наша подборка для 4-5 лет.',
-            '🦉 Наша семейная библиотека: любимые книги. А у вас есть своя?',
-            '📚 Как заинтересовать ребёнка чтением? Индивидуальный подход!'
+            '📚 Сегодня читали "Колобка" с малышами — восторг!',
+            '🌟 Как привить любовь к чтению с пелёнок? Делитесь опытом!',
+            '🦉 В клубе "Совёнок" стартует марафон "Сказка на ночь"!',
+            '📖 Какие книги вы читаете с детьми перед сном?',
+            '🎨 Творческая встреча: рисуем иллюстрации к любимым сказкам!',
+            '📚 Подборка книг для детей 3-4 лет. Самые интересные!',
+            '🌟 Чтение развивает фантазию и речь. Это доказано!',
+            '🦉 Родительский клуб: обмен опытом.',
+            '📖 Уютные вечера с книгой — лучший отдых.',
+            '🎨 Как выбрать книгу по возрасту? Делюсь опытом.',
+            '📚 Читаем вместе с детьми — строим будущее.',
+            '🌟 Сказки народов мира. Мы начали с русских!',
+            '🦉 Игровые методики обучения чтению.',
+            '📖 Книги с картинками — первые шаги.',
+            '🎨 Театр теней по сказкам. Дети в восторге!',
+            '📚 Читательский дневник: идеи для заполнения.',
+            '🌟 Приобщаем к чтению с раннего возраста.',
+            '🦉 Семейные традиции: чтение по кругу.',
+            '📖 Как отвечать на вопросы детей о прочитанном?',
+            '🎨 Рисуем героев сказок.',
+            '📚 Подборка книг для малышей 1-2 лет.',
+            '🌟 Как превратить чтение в праздник?',
+            '🦉 Развитие речи через чтение.',
+            '📖 Ваша любимая детская книга? Делитесь!',
+            '📚 Библиотека в детском саду: наши мероприятия.',
+            '🎨 Конкурс рисунков по мотивам прочитанных книг.',
+            '🌟 Сказкотерапия для детей.',
+            '📖 Чтение с детьми — основа развития.',
+            '🦉 Вечерние сказки: традиция нашей семьи.',
+            '📚 Календарь чтения на месяц.',
+            '🎨 Театрализованные представления по сказкам.',
+            '🌟 Игры по мотивам любимых книг.',
+            '📖 Моя первая книга: что выбрать?',
+            '🦉 Книжный клуб для самых маленьких.',
+            '📚 Семейное чтение: что это даёт ребёнку?',
+            '🎨 Иллюстрации к стихам Агнии Барто.',
+            '🌟 Книги о дружбе и добре.',
+            '📖 Как читать детям, чтобы им было интересно?',
+            '🦉 Наша библиотека: книжные новинки.',
+            '📚 Развиваем эмоциональный интеллект через книги.',
+            '🎨 Творческие задания по прочитанному.',
+            '🌟 Стихи и сказки для малышей.',
+            '📖 Книги о природе для детей.',
+            '🦉 Как сохранить интерес к чтению на долгие годы?',
+            '📚 Читаем вместе: семейный опыт.',
+            '🎨 Рисуем персонажей сказок.',
+            '🌟 Воспитание книгой: как это работает?',
+            '📖 Какие книги читать детям 5-6 лет?',
+            '🦉 Детская поэзия: учим стихи с удовольствием.',
+            '📚 Как выбрать книгу для ребёнка в магазине?',
+            '🎨 Мастер-класс: создаём книгу своими руками.',
+            '🌟 Сказки в дорогу: что взять в поездку?',
+            '📖 Чтение перед сном: традиция на все времена.',
+            '🦉 Книги о животных для дошкольников.',
+            '📚 Как обсуждать прочитанное с ребёнком?',
+            '🎨 Интерактивные книги: наш опыт.',
+            '🌟 Читаем вместе в выходной день.',
+            '📖 Книги для развития речи и мышления.',
+            '🦉 Наша семейная библиотека: любимые книги.',
+            '📚 Как заинтересовать ребёнка чтением?'
         ];
 
         const likesList = [
@@ -123,8 +127,8 @@
         for (let i = 0; i < 60; i++) {
             posts.push({
                 id: 'p' + (i + 1),
-                text: texts[i] || '📚 Читаем вместе! Делитесь впечатлениями!',
-                likes: likesList[i] || Math.floor(Math.random() * 22) + 35,
+                text: texts[i] || '📚 Читаем вместе!',
+                likes: likesList[i] || 40,
                 likedByUser: false,
                 bookmarked: false,
                 imageData: null,
@@ -139,273 +143,239 @@
         console.log('📦 Создано 60 демо-постов!');
     }
 
-    // ========== ПРОВЕРКА НАЛИЧИЯ ДАННЫХ ==========
-    function hasData() {
+    // ========== SUPABASE ==========
+    async function loadFromSupabase() {
         try {
-            const saved = localStorage.getItem('sovyonok_posts');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                return Array.isArray(parsed) && parsed.length > 0;
-            }
-            return false;
-        } catch(e) {
-            return false;
-        }
-    }
-
-    // ========== РАБОТА С ОБЛАКОМ ==========
-    function isCloudConfigured() {
-        return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
-    }
-
-    async function loadFromCloud() {
-        if (!isCloudConfigured()) {
-            console.log('☁️ Облако не настроено');
-            return false;
-        }
-
-        try {
-            console.log('☁️ Загрузка из облака...');
-            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': API_KEY }
+            console.log('☁️ Загрузка из Supabase...');
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
             });
             
             if (response.ok) {
                 const data = await response.json();
-                if (data.record && data.record.posts && data.record.posts.length > 0) {
-                    posts = data.record.posts;
-                    chatMessages = data.record.chat || [];
-                    console.log('✅ Загружено из облака:', posts.length, 'постов');
-                    saveToLocalStorage();
-                    return true;
-                } else {
-                    console.log('☁️ В облаке нет данных');
-                    return false;
+                if (data && data.length > 0) {
+                    const record = data.find(item => item.id === 'sovyonok_data');
+                    if (record) {
+                        posts = record.posts || [];
+                        chatMessages = record.chat || [];
+                        console.log('✅ Загружено из Supabase:', posts.length, 'постов');
+                        saveToLocalStorage();
+                        return true;
+                    }
                 }
+                console.log('📦 В Supabase нет данных');
+                return false;
             } else {
-                console.warn('❌ Ошибка загрузки из облака:', response.status);
+                console.warn('❌ Ошибка загрузки из Supabase:', response.status);
                 return false;
             }
         } catch (e) {
-            console.warn('❌ Ошибка соединения с облаком:', e.message);
+            console.warn('❌ Ошибка соединения с Supabase:', e.message);
             return false;
         }
     }
 
-    async function saveToCloud() {
-        if (!isCloudConfigured() || isSyncing) return false;
-        if (Date.now() - lastSyncTime < 3000) return false;
-
+    async function saveToSupabase() {
+        if (isSyncing) return false;
         isSyncing = true;
+        
         try {
             const data = {
+                id: 'sovyonok_data',
                 posts: posts,
                 chat: chatMessages,
-                updated: new Date().toISOString(),
-                version: '1.0'
+                updated_at: new Date().toISOString()
             };
             
-            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-                method: 'PUT',
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?id=eq.sovyonok_data`, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': API_KEY
-                },
-                body: JSON.stringify(data)
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
             });
             
-            if (response.ok) {
-                console.log('✅ Сохранено в облако:', posts.length, 'постов');
-                lastSyncTime = Date.now();
-                isSyncing = false;
-                return true;
+            if (checkResponse.ok) {
+                const existing = await checkResponse.json();
+                
+                let response;
+                if (existing && existing.length > 0) {
+                    response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?id=eq.sovyonok_data`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        },
+                        body: JSON.stringify(data)
+                    });
+                }
+                
+                if (response.ok) {
+                    console.log('✅ Сохранено в Supabase:', posts.length, 'постов');
+                    isSyncing = false;
+                    return true;
+                } else {
+                    console.error('❌ Ошибка сохранения в Supabase:', response.status);
+                    isSyncing = false;
+                    return false;
+                }
             } else {
-                console.error('❌ Ошибка сохранения в облако:', response.status);
+                console.error('❌ Ошибка проверки записи:', checkResponse.status);
                 isSyncing = false;
                 return false;
             }
         } catch (e) {
-            console.error('❌ Ошибка сохранения в облако:', e.message);
+            console.error('❌ Ошибка сохранения в Supabase:', e.message);
             isSyncing = false;
             return false;
         }
     }
 
-    // ========== РАБОТА С LOCALSTORAGE ==========
+    // ========== LOCALSTORAGE ==========
+    function saveToLocalStorage() {
+        try {
+            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
+            localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
+            return true;
+        } catch (e) {
+            console.error('❌ Ошибка localStorage:', e);
+            return false;
+        }
+    }
+
     function loadFromLocalStorage() {
         try {
-            const savedPosts = localStorage.getItem('sovyonok_posts');
-            if (savedPosts) {
-                const parsed = JSON.parse(savedPosts);
+            const saved = localStorage.getItem('sovyonok_posts');
+            if (saved) {
+                const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     posts = parsed;
-                    console.log('💾 Загружено из localStorage:', posts.length, 'постов');
                     return true;
                 }
             }
             return false;
         } catch (e) {
-            console.warn('❌ Ошибка загрузки из localStorage:', e);
             return false;
         }
     }
 
     function loadChatFromLocalStorage() {
         try {
-            const savedChat = localStorage.getItem('sovyonok_chat');
-            if (savedChat) {
-                const parsed = JSON.parse(savedChat);
-                if (Array.isArray(parsed)) {
-                    chatMessages = parsed;
-                    console.log('💾 Загружено чатов из localStorage:', chatMessages.length);
-                    return true;
-                }
+            const saved = localStorage.getItem('sovyonok_chat');
+            if (saved) {
+                chatMessages = JSON.parse(saved);
+                return true;
             }
             return false;
         } catch (e) {
-            console.warn('❌ Ошибка загрузки чата из localStorage:', e);
             return false;
         }
     }
 
-    function saveToLocalStorage() {
-        try {
-            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
-            localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
-            console.log('💾 Сохранено в localStorage. Постов:', posts.length);
-            return true;
-        } catch (e) {
-            console.error('❌ Ошибка сохранения в localStorage:', e);
-            return false;
-        }
-    }
-
-    // ========== ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ==========
+    // ========== СОХРАНЕНИЕ ==========
     async function saveAll() {
-        console.log('💾 СОХРАНЕНИЕ... Постов:', posts.length);
-        const localSaved = saveToLocalStorage();
-        if (isCloudConfigured()) {
-            await saveToCloud();
+        saveToLocalStorage();
+        if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
+            await saveToSupabase();
         }
-        return localSaved;
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==========
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
     async function initializeData() {
-        console.log('🚀 Инициализация данных...');
-        console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
+        console.log('🚀 Запуск...');
+        console.log('☁️ Supabase:', SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co' ? 'ВКЛЮЧЕН ✅' : 'ОТКЛЮЧЕН ❌');
         
-        let dataLoaded = false;
+        let loaded = false;
         
-        // 1. СНАЧАЛА проверяем localStorage
-        if (hasData()) {
-            dataLoaded = loadFromLocalStorage();
+        if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
+            loaded = await loadFromSupabase();
+        }
+        
+        if (!loaded) {
+            loaded = loadFromLocalStorage();
             loadChatFromLocalStorage();
-            console.log('✅ Данные загружены из localStorage');
+            if (loaded) console.log('💾 Загружено из localStorage');
         }
         
-        // 2. Если в localStorage нет - пробуем облако
-        if (!dataLoaded && isCloudConfigured()) {
-            dataLoaded = await loadFromCloud();
-        }
-        
-        // 3. Если ничего нет - создаём 60 демо-постов
-        if (!dataLoaded || posts.length === 0) {
-            console.log('📦 Данных нет. Создаём 60 демо-постов...');
+        if (!loaded || posts.length === 0) {
+            console.log('📦 Создаём 60 постов...');
             createDemoPosts();
             await saveAll();
-        } else {
-            console.log('✅ Загружено', posts.length, 'постов из сохранённых данных');
         }
         
         renderAll();
-        console.log('🎉 Инициализация завершена! Постов:', posts.length);
+        console.log('✅ Готово! Постов:', posts.length);
     }
 
     // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
     function compressImage(dataUrl, maxSize = MAX_IMAGE_SIZE) {
         return new Promise((resolve) => {
-            if (!dataUrl) { resolve(null); return; }
-            if (dataUrl.length < maxSize) { resolve(dataUrl); return; }
-
+            if (!dataUrl || dataUrl.length < maxSize) { resolve(dataUrl); return; }
             const img = new Image();
             img.onload = function() {
-                let width = img.width;
-                let height = img.height;
+                let width = img.width, height = img.height;
                 const maxDim = 800;
                 if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = Math.round(height * (maxDim / width));
-                        width = maxDim;
-                    } else {
-                        width = Math.round(width * (maxDim / height));
-                        height = maxDim;
-                    }
+                    if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+                    else { width = Math.round(width * (maxDim / height)); height = maxDim; }
                 }
                 const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                let quality = 0.8;
-                let result = canvas.toDataURL('image/jpeg', quality);
+                let quality = 0.8, result = canvas.toDataURL('image/jpeg', quality);
                 while (result.length > maxSize && quality > 0.2) {
                     quality -= 0.1;
                     result = canvas.toDataURL('image/jpeg', quality);
                 }
                 resolve(result);
             };
-            img.onerror = function() { resolve(dataUrl); };
+            img.onerror = () => resolve(dataUrl);
             img.src = dataUrl;
         });
     }
 
-    // ========== СЧЁТЧИК ПОСЕЩАЕМОСТИ ==========
+    // ========== СЧЁТЧИК ==========
     function initVisitorCounter() {
         const today = new Date().toDateString();
         const lastVisit = localStorage.getItem('sovyonok_last_visit');
         const savedCount = localStorage.getItem('sovyonok_visitor_count');
-        if (savedCount) {
-            visitorCount = parseInt(savedCount);
-        } else {
-            visitorCount = 2350;
-        }
+        visitorCount = savedCount ? parseInt(savedCount) : 2350;
         if (lastVisit !== today) {
             visitorCount += 1;
             localStorage.setItem('sovyonok_last_visit', today);
             localStorage.setItem('sovyonok_visitor_count', visitorCount.toString());
         }
-        updateVisitorCounter();
+        if (visitorCountEl) visitorCountEl.textContent = visitorCount.toLocaleString('ru-RU');
     }
 
-    function updateVisitorCounter() {
-        if (visitorCountEl) {
-            visitorCountEl.textContent = visitorCount.toLocaleString('ru-RU');
-        }
-    }
-
-    // ========== МОДАЛЬНОЕ ОКНО ==========
+    // ========== МОДАЛКА ==========
     function openModal() {
         devModal.classList.add('active');
         devPassword.value = '';
         devError.style.display = 'none';
         devPassword.focus();
     }
-
-    function closeModal() {
-        devModal.classList.remove('active');
-    }
-
+    function closeModal() { devModal.classList.remove('active'); }
     devLoginBtn.addEventListener('click', openModal);
     devModalClose.addEventListener('click', closeModal);
-    devModal.addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
+    devModal.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
-    // ========== ВХОД РАЗРАБОТЧИКА ==========
     devLoginSubmit.addEventListener('click', function() {
-        const pass = devPassword.value;
-        if (pass === DEV_PASSWORD) {
+        if (devPassword.value === DEV_PASSWORD) {
             isDeveloper = true;
             localStorage.setItem('sovyonok_dev', 'true');
             closeModal();
@@ -418,14 +388,8 @@
             devPassword.focus();
         }
     });
+    devPassword.addEventListener('keydown', function(e) { if (e.key === 'Enter') devLoginSubmit.click(); });
 
-    devPassword.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            devLoginSubmit.click();
-        }
-    });
-
-    // ========== ВЫХОД ИЗ РЕЖИМА РАЗРАБОТЧИКА ==========
     function logoutDeveloper() {
         if (confirm('Выйти из режима разработчика?')) {
             isDeveloper = false;
@@ -436,68 +400,37 @@
         }
     }
 
-    // ========== ПРОВЕРКА РАЗРАБОТЧИКА ==========
     function checkDeveloper() {
-        const devFlag = localStorage.getItem('sovyonok_dev');
-        isDeveloper = devFlag === 'true';
+        isDeveloper = localStorage.getItem('sovyonok_dev') === 'true';
         updateDeveloperUI();
     }
 
     function updateDeveloperUI() {
         const createArea = document.getElementById('createPostArea');
-        if (createArea) {
-            createArea.style.display = isDeveloper ? 'block' : 'none';
-        }
+        if (createArea) createArea.style.display = isDeveloper ? 'block' : 'none';
         if (devLoginBtn) {
             if (isDeveloper) {
                 devLoginBtn.innerHTML = '<i class="fas fa-user-cog"></i> Разработчик';
                 devLoginBtn.className = 'nav-btn dev-btn active-dev';
-                devLoginBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    logoutDeveloper();
-                };
+                devLoginBtn.onclick = function(e) { e.stopPropagation(); logoutDeveloper(); };
             } else {
                 devLoginBtn.innerHTML = '<i class="fas fa-user-cog"></i> Войти';
                 devLoginBtn.className = 'nav-btn dev-btn';
-                devLoginBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    openModal();
-                };
+                devLoginBtn.onclick = function(e) { e.stopPropagation(); openModal(); };
             }
         }
     }
 
-    // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-    function generateId() {
-        return Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    }
+    // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
+    function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 9); }
+    function escapeHTML(text) { if (!text) return ''; return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function formatTextWithBreaks(text) { if (!text) return ''; return escapeHTML(text).replace(/\n/g, '<br>'); }
 
-    function escapeHTML(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
-    function formatTextWithBreaks(text) {
-        if (!text) return '';
-        return escapeHTML(text).replace(/\n/g, '<br>');
-    }
-
-    function getBookmarkCount() {
-        return posts.filter(p => p.bookmarked).length;
-    }
-
-    function getChatCount() {
-        return chatMessages.length;
-    }
-
+    function getBookmarkCount() { return posts.filter(p => p.bookmarked).length; }
+    function getChatCount() { return chatMessages.length; }
     function updateCounters() {
         if (bookmarkCount) bookmarkCount.textContent = getBookmarkCount();
         if (chatCount) chatCount.textContent = getChatCount();
-        updateVisitorCounter();
     }
 
     // ========== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==========
@@ -511,7 +444,6 @@
         switchPage('chat');
         setTimeout(() => { chatMessageInput.focus(); }, 300);
     }
-
     if (clearChatRef) {
         clearChatRef.addEventListener('click', function() {
             chatPostRef.style.display = 'none';
@@ -532,12 +464,9 @@
         if (pageId === 'chat') renderChat();
     }
 
-    // ========== НАЧАЛО РЕДАКТИРОВАНИЯ ПОСТА ==========
+    // ========== РЕДАКТИРОВАНИЕ ==========
     function startEditPost(postId) {
-        if (!isDeveloper) {
-            alert('Только разработчик может редактировать посты!');
-            return;
-        }
+        if (!isDeveloper) { alert('Только разработчик!'); return; }
         const post = posts.find(p => p.id === postId);
         if (!post) { alert('Пост не найден!'); return; }
         if (editingPost) cancelEdit();
@@ -572,10 +501,10 @@
         }
     }
 
-    // ========== УДАЛЕНИЕ ПОСТА ==========
+    // ========== УДАЛЕНИЕ ==========
     function deletePost(postId) {
-        if (!isDeveloper) { alert('Только разработчик может удалять посты!'); return false; }
-        if (confirm('Вы уверены, что хотите удалить этот пост?')) {
+        if (!isDeveloper) { alert('Только разработчик!'); return false; }
+        if (confirm('Удалить пост?')) {
             posts = posts.filter(p => p.id !== postId);
             saveAll();
             renderAll();
@@ -586,8 +515,8 @@
     }
 
     function deleteChatMessage(msgId) {
-        if (!isDeveloper) { alert('Только разработчик может удалять сообщения!'); return false; }
-        if (confirm('Удалить это сообщение?')) {
+        if (!isDeveloper) { alert('Только разработчик!'); return false; }
+        if (confirm('Удалить сообщение?')) {
             chatMessages = chatMessages.filter(m => m.id !== msgId);
             saveAll();
             renderChat();
@@ -603,20 +532,11 @@
         for (const comment of comments) {
             const repliesHtml = comment.replies && comment.replies.length > 0 
                 ? `<div class="replies">${renderComments(comment.replies, postId, true)}</div>` : '';
-            const replyBtn = !isReply ? `
-                <button class="reply-btn" data-reply-to="${postId}|${comment.id}|${escapeHTML(comment.author)}">
-                    <i class="fas fa-reply"></i> Ответить
-                </button>` : '';
-            const deleteBtn = isDeveloper ? `
-                <span class="comment-delete" data-del-comment="${postId}|${comment.id}">
-                    <i class="fas fa-times"></i>
-                </span>` : '';
+            const replyBtn = !isReply ? `<button class="reply-btn" data-reply-to="${postId}|${comment.id}|${escapeHTML(comment.author)}"><i class="fas fa-reply"></i> Ответить</button>` : '';
+            const deleteBtn = isDeveloper ? `<span class="comment-delete" data-del-comment="${postId}|${comment.id}"><i class="fas fa-times"></i></span>` : '';
             html += `
                 <div class="comment-item" data-comment-id="${comment.id}">
-                    <div class="comment-header">
-                        <span class="comment-author">${escapeHTML(comment.author)}</span>
-                        ${deleteBtn}
-                    </div>
+                    <div class="comment-header"><span class="comment-author">${escapeHTML(comment.author)}</span>${deleteBtn}</div>
                     <div class="comment-text">${formatTextWithBreaks(comment.text)}</div>
                     <div class="comment-actions">${replyBtn}</div>
                     ${repliesHtml}
@@ -628,13 +548,7 @@
     function renderFeed(container = feedContainer, showAll = true) {
         let filteredPosts = showAll ? posts : posts.filter(p => p.bookmarked);
         if (!filteredPosts.length) {
-            const message = showAll ? 'Новостей пока нет' : 'У вас пока нет сохранённых постов';
-            container.innerHTML = `
-                <div class="empty-feed">
-                    <i class="far ${showAll ? 'fa-newspaper' : 'fa-bookmark'}"></i>
-                    <p>${message}</p>
-                    ${showAll ? '<p style="font-size:0.85rem; opacity:0.6;">Добро пожаловать в клуб "Совёнок"!</p>' : ''}
-                </div>`;
+            container.innerHTML = `<div class="empty-feed"><i class="far ${showAll ? 'fa-newspaper' : 'fa-bookmark'}"></i><p>${showAll ? 'Новостей пока нет' : 'Нет закладок'}</p></div>`;
             return;
         }
         let html = '';
@@ -644,25 +558,12 @@
             const likes = post.likes || 0;
             const liked = post.likedByUser || false;
             const bookmarked = post.bookmarked || false;
-            let imageHtml = post.imageData ? `
-                <div class="post-image">
-                    <img src="${escapeHTML(post.imageData)}" alt="Изображение к посту" loading="lazy" />
-                </div>` : '';
-            const deleteBtn = isDeveloper ? `
-                <button class="delete-post-btn" data-delete-post="${post.id}" title="Удалить пост">
-                    <i class="fas fa-trash-alt"></i>
-                </button>` : '';
-            const editBtn = isDeveloper ? `
-                <button class="edit-post-btn" data-edit-post="${post.id}" title="Редактировать пост">
-                    <i class="fas fa-pen"></i>
-                </button>` : '';
+            let imageHtml = post.imageData ? `<div class="post-image"><img src="${escapeHTML(post.imageData)}" loading="lazy" /></div>` : '';
+            const deleteBtn = isDeveloper ? `<button class="delete-post-btn" data-delete-post="${post.id}"><i class="fas fa-trash-alt"></i></button>` : '';
+            const editBtn = isDeveloper ? `<button class="edit-post-btn" data-edit-post="${post.id}"><i class="fas fa-pen"></i></button>` : '';
             let replyIndicator = '';
             if (replyToComment && replyToComment.postId === post.id) {
-                replyIndicator = `
-                    <div style="background:#fef5ea; padding:6px 12px; border-radius:12px; margin-bottom:6px; font-size:0.8rem; color:#5a2d0c; border:2px dashed #f5a97f;">
-                        <i class="fas fa-reply"></i> Ответ для <strong>${escapeHTML(replyToComment.author)}</strong>
-                        <button id="cancelReply" style="background:none; border:none; color:#ff6b6b; cursor:pointer; margin-left:8px;">✕</button>
-                    </div>`;
+                replyIndicator = `<div style="background:#fef5ea;padding:6px 12px;border-radius:12px;margin-bottom:6px;font-size:0.8rem;color:#5a2d0c;border:2px dashed #f5a97f;"><i class="fas fa-reply"></i> Ответ для <strong>${escapeHTML(replyToComment.author)}</strong><button id="cancelReply" style="background:none;border:none;color:#ff6b6b;cursor:pointer;margin-left:8px;">✕</button></div>`;
             }
             html += `
                 <div class="post-card" data-post-id="${post.id}">
@@ -673,19 +574,10 @@
                     <div class="post-content">${formatTextWithBreaks(post.text)}</div>
                     ${imageHtml}
                     <div class="post-actions">
-                        <button class="action-btn ${liked ? 'liked' : ''}" data-like="${post.id}">
-                            <i class="${liked ? 'fas' : 'far'} fa-heart"></i><span>${likes}</span>
-                        </button>
-                        <button class="action-btn ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${post.id}">
-                            <i class="${bookmarked ? 'fas' : 'far'} fa-bookmark"></i>
-                            <span>${bookmarked ? 'В закладках' : 'Закладка'}</span>
-                        </button>
-                        <button class="action-btn" data-comment-toggle="${post.id}">
-                            <i class="far fa-comment"></i><span>${comments.length}</span>
-                        </button>
-                        <button class="discuss-btn" data-discuss="${post.id}">
-                            <i class="fas fa-comments"></i> Обсудить в чате
-                        </button>
+                        <button class="action-btn ${liked ? 'liked' : ''}" data-like="${post.id}"><i class="${liked ? 'fas' : 'far'} fa-heart"></i><span>${likes}</span></button>
+                        <button class="action-btn ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${post.id}"><i class="${bookmarked ? 'fas' : 'far'} fa-bookmark"></i><span>${bookmarked ? 'В закладках' : 'Закладка'}</span></button>
+                        <button class="action-btn" data-comment-toggle="${post.id}"><i class="far fa-comment"></i><span>${comments.length}</span></button>
+                        <button class="discuss-btn" data-discuss="${post.id}"><i class="fas fa-comments"></i> Обсудить в чате</button>
                     </div>
                     <div class="comment-section">
                         ${replyIndicator}
@@ -693,15 +585,12 @@
                             <input type="text" placeholder="${replyToComment && replyToComment.postId === post.id ? 'Ответ для ' + escapeHTML(replyToComment.author) + '...' : 'Написать комментарий...'}" data-comment-input="${post.id}" />
                             <button data-comment-add="${post.id}"><i class="fas fa-arrow-right"></i></button>
                         </div>
-                        <div class="comment-list" id="commentList-${post.id}">
-                            ${renderComments(comments, post.id)}
-                        </div>
+                        <div class="comment-list">${renderComments(comments, post.id)}</div>
                     </div>
                 </div>`;
         }
         container.innerHTML = html;
-        const cancelBtn = document.getElementById('cancelReply');
-        if (cancelBtn) cancelBtn.addEventListener('click', function() { replyToComment = null; renderAll(); });
+        document.getElementById('cancelReply')?.addEventListener('click', function() { replyToComment = null; renderAll(); });
         document.querySelectorAll('.reply-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const data = this.dataset.replyTo.split('|');
@@ -727,29 +616,15 @@
 
     function renderChat() {
         if (!chatMessages.length) {
-            chatMessagesEl.innerHTML = `
-                <div class="chat-empty">
-                    <i class="fas fa-comment-dots" style="font-size:1.8rem; opacity:0.3;"></i>
-                    <p>Вопросов пока нет</p>
-                    <p style="font-size:0.8rem; opacity:0.6;">Задайте первый вопрос о книгах или чтении!</p>
-                </div>`;
+            chatMessagesEl.innerHTML = `<div class="chat-empty"><i class="fas fa-comment-dots" style="font-size:1.8rem;opacity:0.3;"></i><p>Вопросов пока нет</p></div>`;
             return;
         }
         let html = '';
         for (let i = chatMessages.length - 1; i >= 0; i--) {
             const msg = chatMessages[i];
-            let nameDisplay = msg.isSovyonok ? '<span class="sovyonok">🦉 Совёнок</span>' :
-                            msg.name ? escapeHTML(msg.name) : '<span class="anonymous">Аноним</span>';
-            const deleteBtn = isDeveloper ? `
-                <button class="msg-delete" data-delete-chat="${msg.id}">
-                    <i class="fas fa-times"></i>
-                </button>` : '';
-            html += `
-                <div class="chat-message" data-msg-id="${msg.id}">
-                    <div class="msg-name">${nameDisplay}</div>
-                    <div class="msg-text">${formatTextWithBreaks(msg.text)}</div>
-                    ${deleteBtn}
-                </div>`;
+            let nameDisplay = msg.isSovyonok ? '<span class="sovyonok">🦉 Совёнок</span>' : (msg.name ? escapeHTML(msg.name) : '<span class="anonymous">Аноним</span>');
+            const deleteBtn = isDeveloper ? `<button class="msg-delete" data-delete-chat="${msg.id}"><i class="fas fa-times"></i></button>` : '';
+            html += `<div class="chat-message"><div class="msg-name">${nameDisplay}</div><div class="msg-text">${formatTextWithBreaks(msg.text)}</div>${deleteBtn}</div>`;
         }
         chatMessagesEl.innerHTML = html;
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
@@ -757,23 +632,17 @@
         saveAll();
     }
 
-    // ========== СОХРАНЕНИЕ/ПУБЛИКАЦИЯ ПОСТА ==========
+    // ========== СОХРАНЕНИЕ ПОСТА ==========
     async function savePost(text, imageData) {
         if (!isDeveloper) {
-            alert('❌ Только разработчик может публиковать посты!\nВойдите как разработчик (пароль: sovyonok2024)');
+            alert('❌ Только разработчик!\nПароль: sovyonok2024');
             return false;
         }
         const trimmed = text.trim();
-        if (!trimmed && !imageData) {
-            alert('Напишите текст или прикрепите фото!');
-            return false;
-        }
+        if (!trimmed && !imageData) { alert('Напишите текст!'); return false; }
         let finalImageData = imageData;
         if (imageData) {
-            try {
-                finalImageData = await compressImage(imageData);
-                console.log('🖼️ Изображение сжато. Размер:', (finalImageData.length / 1024).toFixed(1), 'KB');
-            } catch (e) { console.warn('Ошибка сжатия:', e); }
+            try { finalImageData = await compressImage(imageData); } catch(e) {}
         }
         if (editingPost) {
             const post = posts.find(p => p.id === editingPost.postId);
@@ -791,10 +660,6 @@
                 renderAll();
                 alert('✅ Пост обновлён!');
                 return true;
-            } else {
-                cancelEdit();
-                alert('❌ Ошибка: пост не найден');
-                return false;
             }
         }
         const newPost = {
@@ -813,12 +678,11 @@
         await saveAll();
         renderAll();
         postInput.value = '';
-        postInput.style.height = 'auto';
         alert('✅ Пост опубликован!');
         return true;
     }
 
-    // ========== ДОБАВЛЕНИЕ КОММЕНТАРИЯ ==========
+    // ========== КОММЕНТАРИИ ==========
     function addComment(postId, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите комментарий!'); return false; }
@@ -855,7 +719,7 @@
         renderAll();
     }
 
-    // ========== ДОБАВЛЕНИЕ СООБЩЕНИЯ В ЧАТ ==========
+    // ========== ЧАТ ==========
     function addChatMessage(name, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите вопрос!'); return false; }
@@ -882,7 +746,7 @@
         return true;
     }
 
-    // ========== ЛАЙК И ЗАКЛАДКА ==========
+    // ========== ЛАЙКИ ==========
     function toggleLike(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -891,7 +755,6 @@
         if (post.likes < 0) post.likes = 0;
         saveAll();
         renderAll();
-        console.log('❤️ Лайк обновлён! Пост:', postId, 'Лайков:', post.likes);
     }
 
     function toggleBookmark(postId) {
@@ -900,10 +763,9 @@
         post.bookmarked = !post.bookmarked;
         saveAll();
         renderAll();
-        console.log('📌 Закладка обновлена! Пост:', postId, 'В закладках:', post.bookmarked);
     }
 
-    // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+    // ========== ОБРАБОТЧИКИ ==========
     document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         btn.addEventListener('click', function() { switchPage(this.dataset.tab); });
     });
@@ -925,7 +787,7 @@
                         previewImg.src = compressed;
                         imagePreview.style.display = 'block';
                     } catch (error) {
-                        console.error('Ошибка обработки изображения:', error);
+                        console.error('Ошибка:', error);
                         alert('Ошибка обработки изображения');
                     }
                 };
@@ -977,7 +839,7 @@
         });
     }
 
-    // ========== ДЕЛЕГИРОВАНИЕ СОБЫТИЙ ==========
+    // ========== ДЕЛЕГИРОВАНИЕ ==========
     document.addEventListener('click', function(e) {
         const target = e.target.closest('button');
         if (!target) return;
@@ -1025,22 +887,19 @@
     });
 
     // ========== ЗАПУСК ==========
-    console.log('🚀 Запуск приложения...');
+    console.log('🚀 Запуск...');
     checkDeveloper();
     initVisitorCounter();
     
     initializeData().then(() => {
-        console.log('🎉 Приложение готово!');
-        console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
-        console.log('📊 Всего постов:', posts.length);
-        console.log('💾 Данные сохраняются в localStorage и облако');
+        console.log('🎉 Готово! Постов:', posts.length);
         
-        // Авто-синхронизация каждые 15 секунд (чаще для сохранения)
+        // Авто-синхронизация каждые 30 секунд
         setInterval(async () => {
-            if (isCloudConfigured()) {
-                await saveToCloud();
+            if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
+                await saveToSupabase();
             }
-        }, 15000);
+        }, 30000);
     });
 
 })();
