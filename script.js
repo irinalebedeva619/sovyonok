@@ -18,7 +18,6 @@
     let visitorCount = 0;
     let isSyncing = false;
     let lastSyncTime = 0;
-    let isFirstLoad = true;
 
     // ========== DOM ЭЛЕМЕНТЫ ==========
     const feedContainer = document.getElementById('feedContainer');
@@ -45,142 +44,6 @@
     const chatPostText = document.getElementById('chatPostText');
     const clearChatRef = document.getElementById('clearChatRef');
     const visitorCountEl = document.getElementById('visitorCount');
-
-    // ========== РАБОТА С ОБЛАКОМ ==========
-    function isCloudConfigured() {
-        return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
-    }
-
-    async function loadFromCloud() {
-        if (!isCloudConfigured()) {
-            console.log('☁️ Облако не настроено');
-            return false;
-        }
-
-        try {
-            console.log('☁️ Загрузка из облака...');
-            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': API_KEY }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.record && data.record.posts && data.record.posts.length > 0) {
-                    posts = data.record.posts;
-                    chatMessages = data.record.chat || [];
-                    console.log('✅ Загружено из облака:', posts.length, 'постов');
-                    saveToLocalStorage();
-                    return true;
-                } else {
-                    console.log('☁️ В облаке нет данных');
-                    return false;
-                }
-            } else {
-                console.warn('❌ Ошибка загрузки из облака:', response.status);
-                return false;
-            }
-        } catch (e) {
-            console.warn('❌ Ошибка соединения с облаком:', e.message);
-            return false;
-        }
-    }
-
-    async function saveToCloud() {
-        if (!isCloudConfigured() || isSyncing) return false;
-        if (Date.now() - lastSyncTime < 3000) return false;
-
-        isSyncing = true;
-        try {
-            const data = {
-                posts: posts,
-                chat: chatMessages,
-                updated: new Date().toISOString(),
-                version: '1.0'
-            };
-            
-            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': API_KEY
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (response.ok) {
-                console.log('✅ Сохранено в облако:', posts.length, 'постов');
-                lastSyncTime = Date.now();
-                isSyncing = false;
-                return true;
-            } else {
-                console.error('❌ Ошибка сохранения в облако:', response.status);
-                isSyncing = false;
-                return false;
-            }
-        } catch (e) {
-            console.error('❌ Ошибка сохранения в облако:', e.message);
-            isSyncing = false;
-            return false;
-        }
-    }
-
-    // ========== РАБОТА С LOCALSTORAGE ==========
-    function loadFromLocalStorage() {
-        try {
-            const savedPosts = localStorage.getItem('sovyonok_posts');
-            if (savedPosts) {
-                const parsed = JSON.parse(savedPosts);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    posts = parsed;
-                    console.log('💾 Загружено из localStorage:', posts.length, 'постов');
-                    return true;
-                }
-            }
-            return false;
-        } catch (e) {
-            console.warn('❌ Ошибка загрузки из localStorage:', e);
-            return false;
-        }
-    }
-
-    function loadChatFromLocalStorage() {
-        try {
-            const savedChat = localStorage.getItem('sovyonok_chat');
-            if (savedChat) {
-                const parsed = JSON.parse(savedChat);
-                if (Array.isArray(parsed)) {
-                    chatMessages = parsed;
-                    console.log('💾 Загружено чатов из localStorage:', chatMessages.length);
-                    return true;
-                }
-            }
-            return false;
-        } catch (e) {
-            console.warn('❌ Ошибка загрузки чата из localStorage:', e);
-            return false;
-        }
-    }
-
-    function saveToLocalStorage() {
-        try {
-            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
-            localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
-            console.log('💾 Сохранено в localStorage. Постов:', posts.length);
-            return true;
-        } catch (e) {
-            console.error('❌ Ошибка сохранения в localStorage:', e);
-            return false;
-        }
-    }
-
-    // ========== ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ==========
-    async function saveAll() {
-        const localSaved = saveToLocalStorage();
-        if (isCloudConfigured()) {
-            await saveToCloud();
-        }
-        return localSaved;
-    }
 
     // ========== 60 ДЕМО ПОСТОВ ==========
     function createDemoPosts() {
@@ -276,25 +139,70 @@
         console.log('📦 Создано 60 демо-постов!');
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==========
-    async function initializeData() {
-        console.log('🚀 Инициализация данных...');
-        console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
-        
-        // Всегда создаём демо-посты при первом запуске
-        createDemoPosts();
-        
-        // Сохраняем в localStorage
-        saveToLocalStorage();
-        
-        // Отправляем в облако
+    // ========== РАБОТА С ОБЛАКОМ ==========
+    function isCloudConfigured() {
+        return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
+    }
+
+    async function saveToCloud() {
+        if (!isCloudConfigured() || isSyncing) return false;
+        if (Date.now() - lastSyncTime < 3000) return false;
+
+        isSyncing = true;
+        try {
+            const data = {
+                posts: posts,
+                chat: chatMessages,
+                updated: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Сохранено в облако:', posts.length, 'постов');
+                lastSyncTime = Date.now();
+                isSyncing = false;
+                return true;
+            } else {
+                console.error('❌ Ошибка сохранения в облако:', response.status);
+                isSyncing = false;
+                return false;
+            }
+        } catch (e) {
+            console.error('❌ Ошибка сохранения в облако:', e.message);
+            isSyncing = false;
+            return false;
+        }
+    }
+
+    // ========== РАБОТА С LOCALSTORAGE ==========
+    function saveToLocalStorage() {
+        try {
+            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
+            localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
+            console.log('💾 Сохранено в localStorage. Постов:', posts.length);
+            return true;
+        } catch (e) {
+            console.error('❌ Ошибка сохранения в localStorage:', e);
+            return false;
+        }
+    }
+
+    // ========== ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ==========
+    async function saveAll() {
+        const localSaved = saveToLocalStorage();
         if (isCloudConfigured()) {
             await saveToCloud();
-            console.log('✅ Демо-посты отправлены в облако');
         }
-        
-        renderAll();
-        console.log('🎉 Инициализация завершена! Постов:', posts.length);
+        return localSaved;
     }
 
     // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
@@ -1002,17 +910,23 @@
     checkDeveloper();
     initVisitorCounter();
     
-    initializeData().then(() => {
+    // ПРИНУДИТЕЛЬНО СОЗДАЁМ 60 ПОСТОВ ПРИ КАЖДОМ ЗАПУСКЕ
+    createDemoPosts();
+    saveToLocalStorage();
+    
+    // Отправляем в облако
+    saveToCloud().then(() => {
+        renderAll();
         console.log('🎉 Приложение готово!');
         console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
         console.log('📊 Всего постов:', posts.length);
-        
-        // Авто-синхронизация каждые 30 секунд
-        setInterval(async () => {
-            if (isCloudConfigured()) {
-                await saveToCloud();
-            }
-        }, 30000);
     });
+
+    // Авто-синхронизация каждые 30 секунд
+    setInterval(async () => {
+        if (isCloudConfigured()) {
+            await saveToCloud();
+        }
+    }, 30000);
 
 })();
