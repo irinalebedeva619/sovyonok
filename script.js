@@ -3,7 +3,7 @@
 
     // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА ==========
     const BIN_ID = '6a6c7899f5f4af5e29d98739';
-    const API_KEY = '$2a$10$B.mxMWS0cPYt5wsZCbc4xOlHocB1VhEIata67OWReO1VNkSHk7.c6';
+    const API_KEY = '$2a$10$Pc3TDnaSKI2uolFS4QyfZ.HpMEH266noEyPXlvOcSKXLOheTe8UA6';
     const DEV_PASSWORD = 'sovyonok2024';
     const MAX_IMAGE_SIZE = 150 * 1024;
 
