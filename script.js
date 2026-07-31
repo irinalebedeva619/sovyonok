@@ -45,7 +45,7 @@
     const clearChatRef = document.getElementById('clearChatRef');
     const visitorCountEl = document.getElementById('visitorCount');
 
-    // ========== 60 ДЕМО ПОСТОВ (ТОЛЬКО ДЛЯ ПЕРВОГО ЗАПУСКА) ==========
+    // ========== 60 ДЕМО ПОСТОВ ==========
     function createDemoPosts() {
         const texts = [
             '📚 Сегодня читали "Колобка" с малышами — восторг! Дети просто влюбились в этого хитрого героя!',
@@ -119,6 +119,7 @@
             46,38,54,40,48,42,51,37,49,44
         ];
 
+        posts = [];
         for (let i = 0; i < 60; i++) {
             posts.push({
                 id: 'p' + (i + 1),
@@ -136,6 +137,20 @@
             { id: 'chat3', name: 'Елена', text: 'А как вы приучаете детей к чтению, если они не хотят сидеть на месте?', isSovyonok: false }
         ];
         console.log('📦 Создано 60 демо-постов!');
+    }
+
+    // ========== ПРОВЕРКА НАЛИЧИЯ ДАННЫХ ==========
+    function hasData() {
+        try {
+            const saved = localStorage.getItem('sovyonok_posts');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return Array.isArray(parsed) && parsed.length > 0;
+            }
+            return false;
+        } catch(e) {
+            return false;
+        }
     }
 
     // ========== РАБОТА С ОБЛАКОМ ==========
@@ -267,6 +282,7 @@
 
     // ========== ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ==========
     async function saveAll() {
+        console.log('💾 СОХРАНЕНИЕ... Постов:', posts.length);
         const localSaved = saveToLocalStorage();
         if (isCloudConfigured()) {
             await saveToCloud();
@@ -281,24 +297,25 @@
         
         let dataLoaded = false;
         
-        // 1. Пробуем загрузить из облака
-        if (isCloudConfigured()) {
+        // 1. СНАЧАЛА проверяем localStorage
+        if (hasData()) {
+            dataLoaded = loadFromLocalStorage();
+            loadChatFromLocalStorage();
+            console.log('✅ Данные загружены из localStorage');
+        }
+        
+        // 2. Если в localStorage нет - пробуем облако
+        if (!dataLoaded && isCloudConfigured()) {
             dataLoaded = await loadFromCloud();
         }
         
-        // 2. Если облако не сработало - загружаем из localStorage
-        if (!dataLoaded) {
-            dataLoaded = loadFromLocalStorage();
-            loadChatFromLocalStorage();
-        }
-        
-        // 3. Если данных нет - создаём 60 демо-постов (ТОЛЬКО ПРИ ПЕРВОМ ЗАПУСКЕ)
+        // 3. Если ничего нет - создаём 60 демо-постов
         if (!dataLoaded || posts.length === 0) {
             console.log('📦 Данных нет. Создаём 60 демо-постов...');
             createDemoPosts();
             await saveAll();
         } else {
-            console.log('✅ Загружено', posts.length, 'постов');
+            console.log('✅ Загружено', posts.length, 'постов из сохранённых данных');
         }
         
         renderAll();
@@ -562,7 +579,7 @@
             posts = posts.filter(p => p.id !== postId);
             saveAll();
             renderAll();
-            alert('Пост удалён!');
+            alert('✅ Пост удалён!');
             return true;
         }
         return false;
@@ -874,6 +891,7 @@
         if (post.likes < 0) post.likes = 0;
         saveAll();
         renderAll();
+        console.log('❤️ Лайк обновлён! Пост:', postId, 'Лайков:', post.likes);
     }
 
     function toggleBookmark(postId) {
@@ -882,6 +900,7 @@
         post.bookmarked = !post.bookmarked;
         saveAll();
         renderAll();
+        console.log('📌 Закладка обновлена! Пост:', postId, 'В закладках:', post.bookmarked);
     }
 
     // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
@@ -1014,13 +1033,14 @@
         console.log('🎉 Приложение готово!');
         console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
         console.log('📊 Всего постов:', posts.length);
+        console.log('💾 Данные сохраняются в localStorage и облако');
         
-        // Авто-синхронизация каждые 30 секунд
+        // Авто-синхронизация каждые 15 секунд (чаще для сохранения)
         setInterval(async () => {
             if (isCloudConfigured()) {
                 await saveToCloud();
             }
-        }, 30000);
+        }, 15000);
     });
 
 })();
