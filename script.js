@@ -11,6 +11,7 @@
     let editingPost = null;
     let visitorCount = 0;
     const DEV_PASSWORD = 'sovyonok2024';
+    const MAX_IMAGE_SIZE = 150 * 1024; // 150KB максимум для фото
 
     // ========== DOM ЭЛЕМЕНТЫ ==========
     const feedContainer = document.getElementById('feedContainer');
@@ -37,6 +38,53 @@
     const chatPostText = document.getElementById('chatPostText');
     const clearChatRef = document.getElementById('clearChatRef');
     const visitorCountEl = document.getElementById('visitorCount');
+
+    // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
+    function compressImage(dataUrl, maxSize = MAX_IMAGE_SIZE) {
+        return new Promise((resolve) => {
+            // Если размер уже маленький - возвращаем как есть
+            if (dataUrl.length < maxSize) {
+                resolve(dataUrl);
+                return;
+            }
+
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                
+                // Уменьшаем размер изображения
+                const maxDim = 800;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round(height * (maxDim / width));
+                        width = maxDim;
+                    } else {
+                        width = Math.round(width * (maxDim / height));
+                        height = maxDim;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Пробуем разные качества
+                let quality = 0.8;
+                let result = canvas.toDataURL('image/jpeg', quality);
+                
+                while (result.length > maxSize && quality > 0.2) {
+                    quality -= 0.1;
+                    result = canvas.toDataURL('image/jpeg', quality);
+                }
+                
+                resolve(result);
+            };
+            img.src = dataUrl;
+        });
+    }
 
     // ========== СЧЁТЧИК ПОСЕЩАЕМОСТИ ==========
     function initVisitorCounter() {
@@ -158,6 +206,11 @@
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     posts = parsed;
                     console.log('✅ Загружено постов:', posts.length);
+                    
+                    // Проверяем размер данных
+                    const size = new Blob([savedPosts]).size;
+                    console.log('📊 Размер данных:', (size / 1024 / 1024).toFixed(2), 'MB');
+                    
                     return true;
                 }
             }
@@ -170,13 +223,41 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
+            // Проверяем размер перед сохранением
+            const data = JSON.stringify(posts);
+            const size = new Blob([data]).size;
+            
+            if (size > 4 * 1024 * 1024) { // 4MB предупреждение
+                console.warn('⚠️ Данные большие:', (size / 1024 / 1024).toFixed(2), 'MB');
+                if (!confirm('Данные занимают много места (' + (size / 1024 / 1024).toFixed(2) + ' MB).\nПродолжить сохранение?')) {
+                    return false;
+                }
+            }
+            
+            localStorage.setItem('sovyonok_posts', data);
             localStorage.setItem('sovyonok_chat', JSON.stringify(chatMessages));
-            console.log('✅ Данные сохранены. Постов:', posts.length, 'Сообщений в чате:', chatMessages.length);
+            console.log('✅ Данные сохранены. Постов:', posts.length, 'Размер:', (size / 1024 / 1024).toFixed(2), 'MB');
             return true;
         } catch (e) {
             console.error('❌ Ошибка сохранения:', e);
-            alert('Ошибка сохранения! Проверьте консоль.');
+            
+            if (e.name === 'QuotaExceededError') {
+                alert('❌ Не хватает места в хранилище!\n\n' +
+                      'Рекомендации:\n' +
+                      '1. Удалите посты с большими фото\n' +
+                      '2. Используйте фото меньшего размера\n' +
+                      '3. Очистите ненужные посты');
+                
+                // Предлагаем очистить большие фото
+                if (confirm('Очистить все фото из постов для освобождения места?')) {
+                    posts.forEach(post => {
+                        post.imageData = null;
+                    });
+                    localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
+                    renderAll();
+                    alert('✅ Все фото удалены. Место освобождено!');
+                }
+            }
             return false;
         }
     }
@@ -266,7 +347,10 @@
         }
         
         const post = posts.find(p => p.id === postId);
-        if (!post) return;
+        if (!post) {
+            alert('Пост не найден!');
+            return;
+        }
         
         if (editingPost) {
             cancelEdit();
@@ -584,11 +668,11 @@
     }
 
     // ========== СОХРАНЕНИЕ/ПУБЛИКАЦИЯ ПОСТА ==========
-    function savePost(text, imageData) {
+    async function savePost(text, imageData) {
         console.log('🔍 savePost вызван, isDeveloper:', isDeveloper);
         
         if (!isDeveloper) {
-            alert('Только разработчик может публиковать посты!');
+            alert('❌ Только разработчик может публиковать посты!\nВойдите как разработчик (пароль: sovyonok2024)');
             return false;
         }
         
@@ -598,13 +682,25 @@
             return false;
         }
 
+        let finalImageData = imageData;
+        
+        // Сжимаем изображение, если оно есть
+        if (imageData) {
+            try {
+                finalImageData = await compressImage(imageData);
+                console.log('🖼️ Изображение сжато. Размер:', (finalImageData.length / 1024).toFixed(1), 'KB');
+            } catch (e) {
+                console.warn('Ошибка сжатия:', e);
+            }
+        }
+
         // Редактирование существующего поста
         if (editingPost) {
             console.log('✏️ Редактирование поста:', editingPost.postId);
             const post = posts.find(p => p.id === editingPost.postId);
             if (post) {
                 post.text = trimmed || '';
-                post.imageData = imageData || null;
+                post.imageData = finalImageData || null;
                 
                 // Сбрасываем состояние редактирования
                 editingPost = null;
@@ -636,7 +732,7 @@
             likes: 0,
             likedByUser: false,
             bookmarked: false,
-            imageData: imageData || null,
+            imageData: finalImageData || null,
             comments: []
         };
 
@@ -787,14 +883,32 @@
         });
     });
 
+    // Обработка загрузки изображения с автоматическим сжатием
     if (imageUpload) {
-        imageUpload.addEventListener('change', function(e) {
+        imageUpload.addEventListener('change', async function(e) {
             if (this.files && this.files[0]) {
+                const file = this.files[0];
+                
+                // Проверяем размер файла
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('⚠️ Файл слишком большой (>5MB). Пожалуйста, выберите изображение меньше.');
+                    this.value = '';
+                    return;
+                }
+                
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentImageData = e.target.result;
-                    previewImg.src = currentImageData;
-                    imagePreview.style.display = 'block';
+                reader.onload = async function(e) {
+                    try {
+                        // Сжимаем изображение при загрузке
+                        const compressed = await compressImage(e.target.result);
+                        currentImageData = compressed;
+                        previewImg.src = compressed;
+                        imagePreview.style.display = 'block';
+                        console.log('🖼️ Изображение загружено, размер:', (compressed.length / 1024).toFixed(1), 'KB');
+                    } catch (error) {
+                        console.error('Ошибка обработки изображения:', error);
+                        alert('Ошибка обработки изображения');
+                    }
                 };
                 reader.readAsDataURL(this.files[0]);
             }
@@ -812,6 +926,7 @@
 
     if (publishBtn) {
         publishBtn.addEventListener('click', function() {
+            console.log('🖱️ Кнопка "Опубликовать" нажата');
             const text = postInput.value;
             savePost(text, currentImageData);
         });
@@ -956,19 +1071,15 @@
     // ========== ЗАПУСК ==========
     console.log('🚀 Запуск приложения...');
     
-    // Проверяем режим разработчика
     checkDeveloper();
     initVisitorCounter();
     
-    // Пытаемся загрузить данные
     const hasData = loadFromStorage();
     console.log('📊 Данные в localStorage:', hasData ? 'есть' : 'нет');
     
     if (!hasData) {
-        // Если данных нет - создаем демо
         initDemoData();
     } else {
-        // Загружаем чат
         try {
             const savedChat = localStorage.getItem('sovyonok_chat');
             if (savedChat) {
@@ -980,7 +1091,7 @@
         }
     }
     
-    // Рендерим всё
     renderAll();
     console.log('🎉 Приложение готово! Постов:', posts.length);
+    console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
 })();
