@@ -4,7 +4,7 @@
     // ============================================================
     //  👇👇👇 СЮДА ВСТАВЬ СВОИ ДАННЫЕ ИЗ SUPABASE 👇👇👇
     // ============================================================
-    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co/rest/v1/';  
+    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co';  // ← УБРАЛ /rest/v1/
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';  
     // ============================================================
 
@@ -156,17 +156,26 @@
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('📦 Данные из Supabase:', data);
+                
                 if (data && data.length > 0) {
                     const record = data.find(item => item.id === 'sovyonok_data');
-                    if (record) {
-                        posts = record.posts || [];
+                    if (record && record.posts && record.posts.length > 0) {
+                        posts = record.posts;
                         chatMessages = record.chat || [];
                         console.log('✅ Загружено из Supabase:', posts.length, 'постов');
                         saveToLocalStorage();
                         return true;
+                    } else {
+                        console.log('📦 В Supabase нет постов (запись пустая)');
+                        return false;
                     }
+                } else {
+                    console.log('📦 В Supabase нет данных');
+                    return false;
                 }
-                console.log('📦 В Supabase нет данных');
+            } else if (response.status === 404) {
+                console.log('📦 Таблица не найдена');
                 return false;
             } else {
                 console.warn('❌ Ошибка загрузки из Supabase:', response.status);
