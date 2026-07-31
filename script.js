@@ -1,10 +1,9 @@
 (function() {
     "use strict";
 
-    // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА ==========
-    // ЗАРЕГИСТРИРУЙТЕСЬ НА https://jsonbin.io И ВСТАВЬТЕ СВОИ ДАННЫЕ
-    const BIN_ID = 'ваш_bin_id'; // ID вашего бина (из URL)
-    const API_KEY = 'ваш_api_key'; // Ваш секретный ключ
+    // ========== НАСТРОЙКИ ОБЛАЧНОГО ХРАНИЛИЩА (ГОТОВО) ==========
+    const BIN_ID = '6a6c7899f5f4af5e29d98739';
+    const API_KEY = '$2a$10$B.mxMWS0cPYt5wsZCbc4xOlHocB1VhEIata67OWReO1VNkSHk7.c6';
     const BIN_NAME = 'sovyonok_posts';
 
     // ========== СОСТОЯНИЕ ==========
@@ -49,12 +48,10 @@
 
     // ========== РАБОТА С ОБЛАКОМ ==========
 
-    // Проверка наличия API ключей
     function isCloudConfigured() {
         return API_KEY && API_KEY !== 'ваш_api_key' && BIN_ID && BIN_ID !== 'ваш_bin_id';
     }
 
-    // Загрузка из облака
     async function loadFromCloud() {
         if (!isCloudConfigured()) {
             console.log('☁️ Облако не настроено');
@@ -72,7 +69,6 @@
             if (response.ok) {
                 const data = await response.json();
                 if (data.record) {
-                    // Обновляем данные из облака
                     if (data.record.posts) {
                         posts = data.record.posts;
                     }
@@ -81,8 +77,6 @@
                     }
                     console.log('✅ Загружено из облака:', posts.length, 'постов,', chatMessages.length, 'сообщений');
                     lastSyncTime = Date.now();
-                    
-                    // Сохраняем копию в localStorage для кэша
                     saveToLocalStorage();
                     return true;
                 }
@@ -96,13 +90,11 @@
         }
     }
 
-    // Сохранение в облако
     async function saveToCloud() {
         if (!isCloudConfigured() || isSyncing) {
             return false;
         }
 
-        // Не синхронизируем слишком часто (не чаще 1 раза в 3 секунды)
         if (Date.now() - lastSyncTime < 3000) {
             return false;
         }
@@ -112,10 +104,8 @@
         try {
             console.log('☁️ Сохранение в облако...');
             
-            // Сжимаем данные перед отправкой (удаляем слишком большие фото)
             const compressedPosts = posts.map(post => {
                 const newPost = { ...post };
-                // Если фото слишком большое (>500KB), удаляем его для облака
                 if (newPost.imageData && newPost.imageData.length > 500 * 1024) {
                     newPost.imageData = null;
                 }
@@ -195,7 +185,6 @@
 
     function saveToLocalStorage() {
         try {
-            // Проверяем размер данных
             const data = JSON.stringify(posts);
             const size = new Blob([data]).size;
             
@@ -226,45 +215,37 @@
 
     // ========== ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ==========
     async function saveAll() {
-        // Сохраняем в localStorage
         const localSaved = saveToLocalStorage();
-        
-        // Сохраняем в облако (если настроено)
         if (isCloudConfigured()) {
             await saveToCloud();
         }
-        
         return localSaved;
     }
 
     // ========== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ==========
     async function initializeData() {
         console.log('🚀 Инициализация данных...');
+        console.log('☁️ Облачная синхронизация:', isCloudConfigured() ? 'ВКЛЮЧЕНА ✅' : 'ОТКЛЮЧЕНА ❌');
         
         let dataLoaded = false;
         
-        // 1. Пробуем загрузить из облака
         if (isCloudConfigured()) {
             dataLoaded = await loadFromCloud();
         }
         
-        // 2. Если облако не сработало, загружаем из localStorage
         if (!dataLoaded) {
             dataLoaded = loadFromLocalStorage();
             loadChatFromLocalStorage();
         }
         
-        // 3. Если данных нет - создаём демо
         if (!dataLoaded || posts.length === 0) {
             console.log('📦 Создание демо-данных...');
             initDemoData();
             await saveAll();
         }
         
-        // 4. Рендерим всё
         renderAll();
         
-        // 5. Если облако настроено, делаем синхронизацию
         if (isCloudConfigured()) {
             setTimeout(async () => {
                 await syncWithCloud();
@@ -274,17 +255,13 @@
         console.log('🎉 Инициализация завершена! Постов:', posts.length);
     }
 
-    // ========== СИНХРОНИЗАЦИЯ С ОБЛАКОМ ==========
     async function syncWithCloud() {
         if (!isCloudConfigured() || isSyncing) return;
         
         console.log('🔄 Синхронизация с облаком...');
-        
-        // Загружаем последнюю версию из облака
         const cloudData = await loadFromCloud();
         
         if (cloudData) {
-            // Обновляем интерфейс
             renderAll();
             console.log('✅ Синхронизация завершена');
         }
@@ -1255,12 +1232,18 @@
     checkDeveloper();
     initVisitorCounter();
     
-    // Инициализация данных
     initializeData().then(() => {
         console.log('🎉 Приложение готово!');
         console.log('👤 Режим разработчика:', isDeveloper ? 'ВКЛЮЧЕН' : 'ВЫКЛЮЧЕН');
         console.log('📊 Всего постов:', posts.length);
         console.log('💬 Всего сообщений в чате:', chatMessages.length);
+        
+        // Автоматическая синхронизация каждые 30 секунд
+        setInterval(async () => {
+            if (isCloudConfigured()) {
+                await saveToCloud();
+            }
+        }, 30000);
     });
 
 })();
