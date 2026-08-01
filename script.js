@@ -302,7 +302,7 @@
         }
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНА) ==========
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
     async function initializeData() {
         console.log('🚀 Запуск...');
         console.log('☁️ Supabase:', SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co' ? 'ВКЛЮЧЕН ✅' : 'ОТКЛЮЧЕН ❌');
@@ -586,10 +586,20 @@
                     <div class="post-content">${formatTextWithBreaks(post.text)}</div>
                     ${imageHtml}
                     <div class="post-actions">
-                        <button class="action-btn ${liked ? 'liked' : ''}" data-like="${post.id}"><i class="${liked ? 'fas' : 'far'} fa-heart"></i><span>${likes}</span></button>
-                        <button class="action-btn ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${post.id}"><i class="${bookmarked ? 'fas' : 'far'} fa-bookmark"></i><span>${bookmarked ? 'В закладках' : 'Закладка'}</span></button>
-                        <button class="action-btn" data-comment-toggle="${post.id}"><i class="far fa-comment"></i><span>${comments.length}</span></button>
-                        <button class="discuss-btn" data-discuss="${post.id}"><i class="fas fa-comments"></i> Обсудить в чате</button>
+                        <button class="action-btn ${liked ? 'liked' : ''}" data-like="${post.id}">
+                            <i class="${liked ? 'fas' : 'far'} fa-heart"></i>
+                            <span>${likes}</span>
+                        </button>
+                        <button class="action-btn ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${post.id}">
+                            <i class="${bookmarked ? 'fas' : 'far'} fa-bookmark"></i>
+                            <span>${bookmarked ? 'В закладках' : 'Закладка'}</span>
+                        </button>
+                        <button class="action-btn" data-comment-toggle="${post.id}">
+                            <i class="far fa-comment"></i><span>${comments.length}</span>
+                        </button>
+                        <button class="discuss-btn" data-discuss="${post.id}">
+                            <i class="fas fa-comments"></i> Обсудить в чате
+                        </button>
                     </div>
                     <div class="comment-section">
                         ${replyIndicator}
@@ -644,6 +654,38 @@
         saveAll();
     }
 
+    // ========== ГЛОБАЛЬНЫЙ ЛАЙК ==========
+    function toggleLike(postId) {
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        
+        // Переключаем состояние лайка (глобальное)
+        post.likedByUser = !post.likedByUser;
+        post.likes = post.likedByUser ? post.likes + 1 : post.likes - 1;
+        if (post.likes < 0) post.likes = 0;
+        
+        // Сохраняем в localStorage и облако
+        saveAll();
+        renderAll();
+        
+        console.log(`❤️ Лайк: пост ${postId}, лайков: ${post.likes}`);
+    }
+
+    // ========== ЛИЧНАЯ ЗАКЛАДКА ==========
+    function toggleBookmark(postId) {
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        
+        // Переключаем состояние закладки (личное)
+        post.bookmarked = !post.bookmarked;
+        
+        // Сохраняем в localStorage и облако
+        saveAll();
+        renderAll();
+        
+        console.log(`📌 Закладка: пост ${postId}, в закладках: ${post.bookmarked}`);
+    }
+
     // ========== СОХРАНЕНИЕ ПОСТА ==========
     async function savePost(text, imageData) {
         if (!isDeveloper) {
@@ -694,7 +736,7 @@
         return true;
     }
 
-    // ========== КОММЕНТАРИИ ==========
+    // ========== ГЛОБАЛЬНЫЕ КОММЕНТАРИИ ==========
     function addComment(postId, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите комментарий!'); return false; }
@@ -704,14 +746,23 @@
             const parentComment = post.comments.find(c => c.id === replyToComment.commentId);
             if (parentComment) {
                 if (!parentComment.replies) parentComment.replies = [];
-                parentComment.replies.push({ id: generateId(), text: trimmed, author: 'Аноним' });
+                parentComment.replies.push({ 
+                    id: generateId(), 
+                    text: trimmed, 
+                    author: 'Аноним' 
+                });
                 replyToComment = null;
                 saveAll();
                 renderAll();
                 return true;
             }
         }
-        post.comments.push({ id: generateId(), text: trimmed, author: 'Аноним', replies: [] });
+        post.comments.push({ 
+            id: generateId(), 
+            text: trimmed, 
+            author: 'Аноним', 
+            replies: [] 
+        });
         saveAll();
         renderAll();
         return true;
@@ -721,17 +772,23 @@
         const post = posts.find(p => p.id === postId);
         if (!post) return;
         for (const c of post.comments) {
-            if (c.id === commentId) { post.comments = post.comments.filter(c => c.id !== commentId); break; }
+            if (c.id === commentId) { 
+                post.comments = post.comments.filter(c => c.id !== commentId); 
+                break; 
+            }
             if (c.replies) {
                 const replyIndex = c.replies.findIndex(r => r.id === commentId);
-                if (replyIndex !== -1) { c.replies.splice(replyIndex, 1); break; }
+                if (replyIndex !== -1) { 
+                    c.replies.splice(replyIndex, 1); 
+                    break; 
+                }
             }
         }
         saveAll();
         renderAll();
     }
 
-    // ========== ЧАТ ==========
+    // ========== ГЛОБАЛЬНЫЙ ЧАТ ==========
     function addChatMessage(name, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите вопрос!'); return false; }
@@ -756,25 +813,6 @@
         chatMessageInput.value = '';
         if (!isDeveloper) chatNameInput.value = '';
         return true;
-    }
-
-    // ========== ЛАЙКИ ==========
-    function toggleLike(postId) {
-        const post = posts.find(p => p.id === postId);
-        if (!post) return;
-        post.likedByUser = !post.likedByUser;
-        post.likes = post.likedByUser ? post.likes + 1 : post.likes - 1;
-        if (post.likes < 0) post.likes = 0;
-        saveAll();
-        renderAll();
-    }
-
-    function toggleBookmark(postId) {
-        const post = posts.find(p => p.id === postId);
-        if (!post) return;
-        post.bookmarked = !post.bookmarked;
-        saveAll();
-        renderAll();
     }
 
     // ========== ОБРАБОТЧИКИ ==========
@@ -947,7 +985,7 @@
                     // Игнорируем ошибки проверки
                 }
             }
-        }, 15000); // 15 секунд
+        }, 15000);
     });
 
 })();
