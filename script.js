@@ -309,19 +309,16 @@
         
         let loaded = false;
         
-        // 1. ВСЕГДА пробуем загрузить из Supabase (самые свежие данные)
         if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
             loaded = await loadFromSupabase();
         }
         
-        // 2. Если Supabase не ответил - загружаем из localStorage (кеш)
         if (!loaded) {
             loaded = loadFromLocalStorage();
             loadChatFromLocalStorage();
             if (loaded) console.log('💾 Загружено из localStorage (кеш)');
         }
         
-        // 3. Если данных нет вообще - создаём 60 демо-постов
         if (!loaded || posts.length === 0) {
             console.log('📦 Создаём 60 постов...');
             createDemoPosts();
@@ -654,21 +651,23 @@
         saveAll();
     }
 
-    // ========== ГЛОБАЛЬНЫЙ ЛАЙК ==========
+    // ========== ГЛОБАЛЬНЫЙ ЛАЙК (счётчик + личный статус) ==========
     function toggleLike(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
         
-        // Переключаем состояние лайка (глобальное)
+        // Переключаем личный статус лайка для этого пользователя
         post.likedByUser = !post.likedByUser;
+        
+        // Обновляем глобальный счётчик
         post.likes = post.likedByUser ? post.likes + 1 : post.likes - 1;
         if (post.likes < 0) post.likes = 0;
         
-        // Сохраняем в localStorage и облако
+        // Сохраняем
         saveAll();
         renderAll();
         
-        console.log(`❤️ Лайк: пост ${postId}, лайков: ${post.likes}`);
+        console.log(`❤️ Пост ${postId}: всего лайков ${post.likes}, пользователь лайкнул: ${post.likedByUser}`);
     }
 
     // ========== ЛИЧНАЯ ЗАКЛАДКА ==========
@@ -676,10 +675,7 @@
         const post = posts.find(p => p.id === postId);
         if (!post) return;
         
-        // Переключаем состояние закладки (личное)
         post.bookmarked = !post.bookmarked;
-        
-        // Сохраняем в localStorage и облако
         saveAll();
         renderAll();
         
