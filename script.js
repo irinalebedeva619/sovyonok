@@ -4,8 +4,8 @@
     // ============================================================
     //  👇👇👇 СЮДА ВСТАВЬ СВОИ ДАННЫЕ ИЗ SUPABASE 👇👇👇
     // ============================================================
-    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co';  // ← УБРАЛ /rest/v1/
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';  
+    const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';
     // ============================================================
 
     const TABLE_NAME = 'posts';
@@ -302,23 +302,26 @@
         }
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    // ========== ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНА) ==========
     async function initializeData() {
         console.log('🚀 Запуск...');
         console.log('☁️ Supabase:', SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co' ? 'ВКЛЮЧЕН ✅' : 'ОТКЛЮЧЕН ❌');
         
         let loaded = false;
         
+        // 1. ВСЕГДА пробуем загрузить из Supabase (самые свежие данные)
         if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
             loaded = await loadFromSupabase();
         }
         
+        // 2. Если Supabase не ответил - загружаем из localStorage (кеш)
         if (!loaded) {
             loaded = loadFromLocalStorage();
             loadChatFromLocalStorage();
-            if (loaded) console.log('💾 Загружено из localStorage');
+            if (loaded) console.log('💾 Загружено из localStorage (кеш)');
         }
         
+        // 3. Если данных нет вообще - создаём 60 демо-постов
         if (!loaded || posts.length === 0) {
             console.log('📦 Создаём 60 постов...');
             createDemoPosts();
@@ -903,12 +906,48 @@
     initializeData().then(() => {
         console.log('🎉 Готово! Постов:', posts.length);
         
-        // Авто-синхронизация каждые 30 секунд
+        // Сохраняем в облако каждые 30 секунд
         setInterval(async () => {
             if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
                 await saveToSupabase();
             }
         }, 30000);
+        
+        // Проверяем новые данные из облака каждые 15 секунд
+        setInterval(async () => {
+            if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.length > 0) {
+                            const record = data.find(item => item.id === 'sovyonok_data');
+                            if (record && record.posts) {
+                                const currentPosts = JSON.stringify(posts);
+                                const newPosts = JSON.stringify(record.posts);
+                                
+                                if (currentPosts !== newPosts) {
+                                    console.log('🔄 Обнаружены изменения в облаке! Обновляем...');
+                                    posts = record.posts;
+                                    chatMessages = record.chat || [];
+                                    saveToLocalStorage();
+                                    renderAll();
+                                    console.log('✅ Загружено', posts.length, 'постов из облака');
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Игнорируем ошибки проверки
+                }
+            }
+        }, 15000); // 15 секунд
     });
 
 })();
