@@ -2,6 +2,8 @@
     "use strict";
 
     // ============================================================
+    //  👇👇👇 СЮДА ВСТАВЬ СВОИ ДАННЫЕ ИЗ SUPABASE 👇👇👇
+    // ============================================================
     const SUPABASE_URL = 'https://yzhyjfcvkfsfzwuytqzx.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHlqZmN2a2ZzZnp3dXl0cXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MjM3ODIsImV4cCI6MjEwMTA5OTc4Mn0.yXSsfsx8sXU04HaHmiaLO-LhOfqWAeyQRQ5MNLkuwoA';
     // ============================================================
@@ -9,7 +11,9 @@
     const TABLE_NAME = 'posts';
     const DEV_PASSWORD = 'sovyonok2024';
     const MAX_IMAGE_SIZE = 150 * 1024;
+    const LIKES_KEY = 'sovyonok_likes';
 
+    // ========== СОСТОЯНИЕ ==========
     let posts = [];
     let chatMessages = [];
     let currentImageData = null;
@@ -20,7 +24,7 @@
     let visitorCount = 0;
     let isSyncing = false;
 
-    // DOM
+    // ========== DOM ЭЛЕМЕНТЫ ==========
     const feedContainer = document.getElementById('feedContainer');
     const bookmarksContainer = document.getElementById('bookmarksContainer');
     const postInput = document.getElementById('postInput');
@@ -46,9 +50,7 @@
     const clearChatRef = document.getElementById('clearChatRef');
     const visitorCountEl = document.getElementById('visitorCount');
 
-    // Локальные лайки
-    const LIKES_KEY = 'sovyonok_likes';
-
+    // ========== ЛОКАЛЬНЫЕ ЛАЙКИ ==========
     function loadLocalLikes() {
         try {
             const saved = localStorage.getItem(LIKES_KEY);
@@ -62,7 +64,7 @@
         } catch (e) {}
     }
 
-    // 60 ДЕМО ПОСТОВ
+    // ========== 60 ДЕМО ПОСТОВ ==========
     function createDemoPosts() {
         const texts = [
             '📚 Сегодня читали "Колобка" с малышами — восторг!',
@@ -156,7 +158,7 @@
         console.log('📦 Создано 60 демо-постов!');
     }
 
-    // SUPABASE
+    // ========== SUPABASE ==========
     async function loadFromSupabase() {
         try {
             console.log('☁️ Загрузка из Supabase...');
@@ -169,6 +171,8 @@
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('📦 Данные из Supabase:', data);
+                
                 if (data && data.length > 0) {
                     const record = data.find(item => item.id === 'sovyonok_data');
                     if (record && record.posts && record.posts.length > 0) {
@@ -242,10 +246,16 @@
                     console.log('✅ Сохранено в Supabase:', posts.length, 'постов');
                     isSyncing = false;
                     return true;
+                } else {
+                    console.error('❌ Ошибка сохранения в Supabase:', response.status);
+                    isSyncing = false;
+                    return false;
                 }
+            } else {
+                console.error('❌ Ошибка проверки записи:', checkResponse.status);
+                isSyncing = false;
+                return false;
             }
-            isSyncing = false;
-            return false;
         } catch (e) {
             console.error('❌ Ошибка сохранения в Supabase:', e.message);
             isSyncing = false;
@@ -253,7 +263,7 @@
         }
     }
 
-    // LOCALSTORAGE
+    // ========== LOCALSTORAGE ==========
     function saveToLocalStorage() {
         try {
             localStorage.setItem('sovyonok_posts', JSON.stringify(posts));
@@ -273,6 +283,7 @@
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     posts = parsed;
+                    console.log('💾 Загружено из localStorage (с изменениями пользователя)');
                     return true;
                 }
             }
@@ -295,6 +306,7 @@
         }
     }
 
+    // ========== СОХРАНЕНИЕ ==========
     async function saveAll() {
         saveToLocalStorage();
         if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
@@ -302,29 +314,40 @@
         }
     }
 
-    // ИНИЦИАЛИЗАЦИЯ
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
     async function initializeData() {
         console.log('🚀 Запуск...');
         console.log('☁️ Supabase:', SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co' ? 'ВКЛЮЧЕН ✅' : 'ОТКЛЮЧЕН ❌');
         
         let loaded = false;
+        let fromCloud = false;
         
-        if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
-            loaded = await loadFromSupabase();
+        // 1. СНАЧАЛА загружаем из localStorage (сохраняем изменения пользователя)
+        const localLoaded = loadFromLocalStorage();
+        loadChatFromLocalStorage();
+        if (localLoaded) {
+            console.log('💾 Загружено из localStorage (с изменениями пользователя)');
+            loaded = true;
         }
         
-        if (!loaded) {
-            loaded = loadFromLocalStorage();
-            loadChatFromLocalStorage();
-            if (loaded) console.log('💾 Загружено из localStorage (кеш)');
+        // 2. Потом загружаем из Supabase (только если в localStorage нет данных)
+        if (!loaded && SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
+            const cloudLoaded = await loadFromSupabase();
+            if (cloudLoaded) {
+                fromCloud = true;
+                console.log('☁️ Загружено из облака');
+                loaded = true;
+            }
         }
         
+        // 3. Если данных нет - создаём демо
         if (!loaded || posts.length === 0) {
             console.log('📦 Создаём 60 постов...');
             createDemoPosts();
             await saveAll();
         }
         
+        // Применяем локальные лайки
         const localLikes = loadLocalLikes();
         posts.forEach(post => {
             post.likedByUser = localLikes[post.id] || false;
@@ -332,9 +355,10 @@
         
         renderAll();
         console.log('✅ Готово! Постов:', posts.length);
+        console.log('📦 Источник:', fromCloud ? 'ОБЛАКО ☁️' : (localLoaded ? 'LOCALSTORAGE 💾' : 'НОВЫЕ ПОСТЫ 📝'));
     }
 
-    // СЖАТИЕ ИЗОБРАЖЕНИЙ
+    // ========== СЖАТИЕ ИЗОБРАЖЕНИЙ ==========
     function compressImage(dataUrl, maxSize = MAX_IMAGE_SIZE) {
         return new Promise((resolve) => {
             if (!dataUrl || dataUrl.length < maxSize) { resolve(dataUrl); return; }
@@ -362,7 +386,7 @@
         });
     }
 
-    // СЧЁТЧИК
+    // ========== СЧЁТЧИК ==========
     function initVisitorCounter() {
         const today = new Date().toDateString();
         const lastVisit = localStorage.getItem('sovyonok_last_visit');
@@ -376,7 +400,7 @@
         if (visitorCountEl) visitorCountEl.textContent = visitorCount.toLocaleString('ru-RU');
     }
 
-    // МОДАЛКА
+    // ========== МОДАЛКА ==========
     function openModal() {
         devModal.classList.add('active');
         devPassword.value = '';
@@ -435,7 +459,7 @@
         }
     }
 
-    // ВСПОМОГАТЕЛЬНЫЕ
+    // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
     function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 9); }
     function escapeHTML(text) { if (!text) return ''; return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function formatTextWithBreaks(text) { if (!text) return ''; return escapeHTML(text).replace(/\n/g, '<br>'); }
@@ -447,7 +471,7 @@
         if (chatCount) chatCount.textContent = getChatCount();
     }
 
-    // ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ
+    // ========== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ==========
     function discussInChat(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -478,7 +502,7 @@
         if (pageId === 'chat') renderChat();
     }
 
-    // РЕДАКТИРОВАНИЕ
+    // ========== РЕДАКТИРОВАНИЕ ==========
     function startEditPost(postId) {
         if (!isDeveloper) { alert('Только разработчик!'); return; }
         const post = posts.find(p => p.id === postId);
@@ -515,7 +539,7 @@
         }
     }
 
-    // УДАЛЕНИЕ
+    // ========== УДАЛЕНИЕ ==========
     function deletePost(postId) {
         if (!isDeveloper) { alert('Только разработчик!'); return false; }
         if (confirm('Удалить пост?')) {
@@ -539,7 +563,7 @@
         return false;
     }
 
-    // РЕНДЕРИНГ
+    // ========== РЕНДЕРИНГ ==========
     function renderComments(comments, postId, isReply = false) {
         if (!comments || comments.length === 0) return '';
         let html = '';
@@ -656,7 +680,7 @@
         saveAll();
     }
 
-    // ========== ЛАЙК ==========
+    // ========== ЛАЙК (ЛОКАЛЬНЫЙ СТАТУС + ГЛОБАЛЬНЫЙ СЧЁТЧИК) ==========
     function toggleLike(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -674,7 +698,7 @@
         renderAll();
     }
 
-    // ========== ЗАКЛАДКА ==========
+    // ========== ЛИЧНАЯ ЗАКЛАДКА ==========
     function toggleBookmark(postId) {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -683,7 +707,7 @@
         renderAll();
     }
 
-    // ========== СОХРАНЕНИЕ ПОСТА (ИСПРАВЛЕНО) ==========
+    // ========== СОХРАНЕНИЕ ПОСТА ==========
     async function savePost(text, imageData) {
         console.log('🔍 savePost вызван, isDeveloper:', isDeveloper);
         
@@ -723,7 +747,6 @@
                 publishBtn.innerHTML = 'Опубликовать';
                 publishBtn.style.background = '';
                 
-                // СОХРАНЯЕМ
                 saveToLocalStorage();
                 if (SUPABASE_URL && SUPABASE_URL !== 'https://ТВОЙ_ПРОЕКТ.supabase.co') {
                     await saveToSupabase();
@@ -765,7 +788,7 @@
         return true;
     }
 
-    // ========== КОММЕНТАРИИ ==========
+    // ========== ГЛОБАЛЬНЫЕ КОММЕНТАРИИ ==========
     function addComment(postId, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите комментарий!'); return false; }
@@ -819,7 +842,7 @@
         renderAll();
     }
 
-    // ========== ЧАТ ==========
+    // ========== ГЛОБАЛЬНЫЙ ЧАТ ==========
     function addChatMessage(name, text) {
         const trimmed = text.trim();
         if (!trimmed) { alert('Напишите вопрос!'); return false; }
@@ -848,7 +871,7 @@
         return true;
     }
 
-    // ОБРАБОТЧИКИ
+    // ========== ОБРАБОТЧИКИ ==========
     document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         btn.addEventListener('click', function() { switchPage(this.dataset.tab); });
     });
@@ -925,7 +948,58 @@
         });
     }
 
-    // ДЕЛЕГИРОВАНИЕ
+    // ========== КНОПКА СИНХРОНИЗАЦИИ ==========
+    const syncBtn = document.getElementById('forceSyncBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', async function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+            this.disabled = true;
+            
+            try {
+                console.log('🔄 Принудительная синхронизация...');
+                
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        const record = data.find(item => item.id === 'sovyonok_data');
+                        if (record && record.posts && record.posts.length > 0) {
+                            posts = record.posts;
+                            chatMessages = record.chat || [];
+                            
+                            const localLikes = loadLocalLikes();
+                            posts.forEach(post => {
+                                post.likedByUser = localLikes[post.id] || false;
+                            });
+                            
+                            saveToLocalStorage();
+                            renderAll();
+                            alert('✅ Данные синхронизированы! Постов: ' + posts.length);
+                            this.innerHTML = '<i class="fas fa-sync"></i> Синхронизировать';
+                            this.disabled = false;
+                        }
+                    }
+                } else {
+                    alert('❌ Ошибка загрузки! Статус: ' + response.status);
+                    this.innerHTML = '<i class="fas fa-sync"></i> Синхронизировать';
+                    this.disabled = false;
+                }
+            } catch (e) {
+                alert('❌ Ошибка соединения!');
+                console.error(e);
+                this.innerHTML = '<i class="fas fa-sync"></i> Синхронизировать';
+                this.disabled = false;
+            }
+        });
+    }
+
+    // ========== ДЕЛЕГИРОВАНИЕ ==========
     document.addEventListener('click', function(e) {
         const target = e.target.closest('button');
         if (!target) return;
@@ -1016,6 +1090,7 @@
                                     
                                     saveToLocalStorage();
                                     renderAll();
+                                    console.log('✅ Загружено', posts.length, 'постов из облака');
                                 }
                             }
                         }
